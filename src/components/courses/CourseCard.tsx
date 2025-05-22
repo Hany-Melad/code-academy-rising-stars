@@ -1,11 +1,13 @@
-
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Course, StudentCourse } from "@/types/supabase";
 import { Book, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import type { Tables } from '@/integrations/supabase/types';
+
+type Course = Tables<'courses'>;
+type StudentCourse = Tables<'student_courses'>;
 
 interface CourseCardProps {
   course: Course;

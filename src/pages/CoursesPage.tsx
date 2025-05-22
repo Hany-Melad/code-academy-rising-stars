@@ -1,13 +1,15 @@
-
 import { useEffect, useState } from "react";
 import { MainLayout } from "@/components/MainLayout";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { supabase } from "@/lib/supabase";
-import { Course, StudentCourse } from "@/types/supabase";
-import { Loader2, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Loader2, Search } from "lucide-react";
+import type { Tables } from '@/integrations/supabase/types';
+
+type Course = Tables<'courses'>;
+type StudentCourse = Tables<'student_courses'>;
 
 const CoursesPage = () => {
   const { user, profile } = useAuth();
