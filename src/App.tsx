@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import CourseDetailPage from "./pages/admin/CourseDetailPage";
 import CoursesPage from "./pages/CoursesPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -40,6 +41,7 @@ const App = () => (
             {/* Protected admin routes */}
             <Route element={<ProtectedRoute requiredRole="admin" redirectPath="/dashboard" />}>
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/courses/:courseId" element={<CourseDetailPage />} />
               {/* Other admin routes would go here */}
             </Route>
             

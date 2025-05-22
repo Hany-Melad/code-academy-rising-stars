@@ -27,7 +27,12 @@ const StudentDashboard = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        if (!profile) return;
+        if (!profile) {
+          console.log("No profile found, waiting...");
+          return;
+        }
+        
+        console.log("Fetching student dashboard data for profile:", profile.id);
         
         // Fetch enrolled courses
         const { data: enrolledCoursesData, error: enrolledError } = await supabase
@@ -35,7 +40,12 @@ const StudentDashboard = () => {
           .select('*, course:courses(*)')
           .eq('student_id', profile.id);
         
-        if (enrolledError) throw enrolledError;
+        if (enrolledError) {
+          console.error("Error fetching enrolled courses:", enrolledError);
+          throw enrolledError;
+        }
+        
+        console.log("Enrolled courses data:", enrolledCoursesData);
         
         // Format courses data
         const formattedCourses = enrolledCoursesData?.map(data => ({
@@ -73,7 +83,12 @@ const StudentDashboard = () => {
           .order('total_points', { ascending: false })
           .limit(5);
         
-        if (studentsError) throw studentsError;
+        if (studentsError) {
+          console.error("Error fetching top students:", studentsError);
+          throw studentsError;
+        }
+        
+        console.log("Top students data:", studentsData);
         
         // Ensure correct typing for roles
         const typedStudents = (studentsData || []).map(student => ({
@@ -104,6 +119,19 @@ const StudentDashboard = () => {
     completed: studentCourse.progress,
     total: course.total_sessions,
   }));
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[80vh]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-t-academy-blue border-r-transparent border-b-academy-orange border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-lg text-gray-600">Loading dashboard data...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
