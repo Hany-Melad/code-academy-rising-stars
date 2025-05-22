@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase, ensureValidRole } from "@/lib/supabase";
 import { Course, Profile } from "@/types/supabase";
 import { Book, Users } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -40,7 +40,14 @@ const AdminDashboard = () => {
           .order('created_at', { ascending: false });
         
         if (studentsError) throw studentsError;
-        setStudents(studentsData || []);
+        
+        // Ensure correct typing for roles
+        const typedStudents = (studentsData || []).map(student => ({
+          ...student,
+          role: ensureValidRole(student.role)
+        }));
+        
+        setStudents(typedStudents);
         
       } catch (error) {
         console.error('Error fetching admin dashboard data:', error);

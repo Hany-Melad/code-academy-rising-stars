@@ -6,7 +6,7 @@ import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
 import { ProgressGraph } from "@/components/dashboard/ProgressGraph";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase, ensureValidRole } from "@/lib/supabase";
 import { Course, Profile, StudentCourse } from "@/types/supabase";
 import { Award, BookOpen, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -75,7 +75,13 @@ const StudentDashboard = () => {
         
         if (studentsError) throw studentsError;
         
-        setTopStudents(studentsData);
+        // Ensure correct typing for roles
+        const typedStudents = (studentsData || []).map(student => ({
+          ...student,
+          role: ensureValidRole(student.role)
+        }));
+        
+        setTopStudents(typedStudents);
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);

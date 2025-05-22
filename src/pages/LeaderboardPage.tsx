@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { supabase } from "@/lib/supabase";
+import { supabase, ensureValidRole } from "@/lib/supabase";
 import { Profile } from "@/types/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,7 +25,13 @@ const LeaderboardPage = () => {
         
         if (error) throw error;
         
-        setStudents(data || []);
+        // Ensure correct typing for roles
+        const typedStudents = (data || []).map(student => ({
+          ...student,
+          role: ensureValidRole(student.role)
+        }));
+        
+        setStudents(typedStudents);
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
         toast({
