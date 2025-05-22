@@ -1,78 +1,43 @@
 
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase, ensureValidRole } from "@/lib/supabase";
-import { Course, Profile, Session } from "@/types/supabase";
-import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, UserPlus } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
-// Session form schema
-const sessionFormSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  video_url: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-  material_url: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-});
-
-type SessionFormValues = z.infer<typeof sessionFormSchema>;
-
-// Student assignment form schema
-const studentAssignmentSchema = z.object({
-  student_id: z.string().min(1, "Please enter a valid student ID"),
-});
-
-type StudentAssignmentValues = z.infer<typeof studentAssignmentSchema>;
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { SessionCard } from "@/components/courses/SessionCard";
+import { supabase, ensureValidRole } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2, Plus, Search, User, XCircle } from "lucide-react";
+import { Course, Profile, Session } from "@/types/supabase";
 
 const CourseDetailPage = () => {
   const { courseId } = useParams<{ courseId: string }>();
-  const { profile } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [course, setCourse] = useState<Course | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [enrolledStudents, setEnrolledStudents] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openSessionDialog, setOpenSessionDialog] = useState(false);
-  const [openAssignStudentDialog, setOpenAssignStudentDialog] = useState(false);
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-
-  // Session form
-  const sessionForm = useForm<SessionFormValues>({
-    resolver: zodResolver(sessionFormSchema),
-    defaultValues: {
-      title: "",
-      video_url: "",
-      material_url: "",
-    },
+  const [enrolledStudents, setEnrolledStudents] = useState<Profile[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [showSessionDialog, setShowSessionDialog] = useState(false);
+  const [showStudentDialog, setShowStudentDialog] = useState(false);
+  const [sessionForm, setSessionForm] = useState({
+    title: "",
+    video_url: "",
+    material_url: ""
   });
-
-  // Student assignment form
-  const assignmentForm = useForm<StudentAssignmentValues>({
-    resolver: zodResolver(studentAssignmentSchema),
-    defaultValues: {
-      student_id: "",
-    },
-  });
-
-  // Fetch course data
+  
+  // Fetch course details, sessions, and enrolled students
   useEffect(() => {
-    const fetchCourseData = async () => {
-      if (!courseId || !profile) return;
-      
+    const fetchCourseDetails = async () => {
       try {
-        setLoading(true);
+        if (!courseId) return;
         
         // Fetch course details
         const { data: courseData, error: courseError } = await supabase
@@ -82,19 +47,9 @@ const CourseDetailPage = () => {
           .single();
         
         if (courseError) throw courseError;
-        if (!courseData) {
-          toast({
-            title: "Course not found",
-            description: "The requested course does not exist",
-            variant: "destructive",
-          });
-          navigate('/admin');
-          return;
-        }
-        
         setCourse(courseData);
         
-        // Fetch course sessions
+        // Fetch sessions
         const { data: sessionsData, error: sessionsError } = await supabase
           .from('sessions')
           .select('*')
@@ -105,29 +60,37 @@ const CourseDetailPage = () => {
         setSessions(sessionsData || []);
         
         // Fetch enrolled students
-        const { data: enrollmentsData, error: enrollmentsError } = await supabase
+        const { data: enrolledData, error: enrolledError } = await supabase
           .from('student_courses')
-          .select('*, student:profiles(*)')
+          .select('student_id')
           .eq('course_id', courseId);
         
-        if (enrollmentsError) throw enrollmentsError;
+        if (enrolledError) throw enrolledError;
         
-        // Extract student profiles and ensure correct typing
-        const students = enrollmentsData?.map(enrollment => {
-          const student = enrollment.student as Profile;
-          return {
+        if (enrolledData && enrolledData.length > 0) {
+          const studentIds = enrolledData.map(sc => sc.student_id);
+          
+          const { data: studentsData, error: studentsError } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', studentIds);
+          
+          if (studentsError) throw studentsError;
+          
+          // Ensure correct typing for roles
+          const typedStudents = (studentsData || []).map(student => ({
             ...student,
             role: ensureValidRole(student.role)
-          };
-        }) || [];
-        
-        setEnrolledStudents(students);
+          }));
+          
+          setEnrolledStudents(typedStudents);
+        }
         
       } catch (error) {
-        console.error('Error fetching course data:', error);
+        console.error('Error fetching course details:', error);
         toast({
           title: "Error",
-          description: "Failed to load course data",
+          description: "Failed to load course details.",
           variant: "destructive",
         });
       } finally {
@@ -135,574 +98,402 @@ const CourseDetailPage = () => {
       }
     };
     
-    fetchCourseData();
-  }, [courseId, profile, navigate, toast]);
-
-  // Handle session form submission
-  const handleSessionSubmit = async (data: SessionFormValues) => {
-    if (!course) return;
+    fetchCourseDetails();
+  }, [courseId, toast]);
+  
+  // Handle session creation
+  const handleCreateSession = async (e: React.FormEvent) => {
+    e.preventDefault();
     
     try {
-      if (isEditing && currentSession) {
-        // Update existing session
-        const { error } = await supabase
-          .from('sessions')
-          .update({
-            title: data.title,
-            video_url: data.video_url || null,
-            material_url: data.material_url || null,
-          })
-          .eq('id', currentSession.id);
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Session updated",
-          description: "The session has been updated successfully",
-        });
-      } else {
-        // Create new session
-        const { error } = await supabase
-          .from('sessions')
-          .insert({
-            course_id: course.id,
-            title: data.title,
-            video_url: data.video_url || null,
-            material_url: data.material_url || null,
-            order_number: sessions.length + 1, // Set order as next in sequence
-          });
-        
-        if (error) throw error;
-        
-        // Update course total_sessions count
-        await supabase
-          .from('courses')
-          .update({ total_sessions: course.total_sessions + 1 })
-          .eq('id', course.id);
-        
-        // Update local course data
-        setCourse({
-          ...course,
-          total_sessions: course.total_sessions + 1
-        });
-        
-        toast({
-          title: "Session created",
-          description: "The session has been added to the course",
-        });
-      }
+      if (!course) return;
       
-      // Refetch sessions
-      const { data: updatedSessions, error: sessionsError } = await supabase
+      const nextOrderNumber = sessions.length + 1;
+      
+      const { data, error } = await supabase
         .from('sessions')
-        .select('*')
-        .eq('course_id', course.id)
-        .order('order_number', { ascending: true });
+        .insert({
+          course_id: course.id,
+          title: sessionForm.title,
+          video_url: sessionForm.video_url || null,
+          material_url: sessionForm.material_url || null,
+          order_number: nextOrderNumber,
+        })
+        .select()
+        .single();
       
-      if (sessionsError) throw sessionsError;
-      setSessions(updatedSessions || []);
+      if (error) throw error;
       
-      // Reset form and close dialog
-      sessionForm.reset();
-      setOpenSessionDialog(false);
-      setCurrentSession(null);
-      setIsEditing(false);
+      setSessions([...sessions, data]);
+      setSessionForm({ title: "", video_url: "", material_url: "" });
+      setShowSessionDialog(false);
       
+      toast({
+        title: "Success",
+        description: "Session created successfully!",
+      });
     } catch (error) {
-      console.error('Error handling session:', error);
+      console.error('Error creating session:', error);
       toast({
         title: "Error",
-        description: isEditing 
-          ? "Failed to update session" 
-          : "Failed to create session",
+        description: "Failed to create session.",
         variant: "destructive",
       });
     }
   };
-
-  // Handle student assignment
-  const handleAssignStudent = async (data: StudentAssignmentValues) => {
-    if (!course) return;
-    
+  
+  // Search students to enroll
+  const searchStudents = async () => {
     try {
-      // Check if student exists
-      const { data: studentData, error: studentError } = await supabase
+      if (!searchTerm.trim()) {
+        setSearchResults([]);
+        return;
+      }
+      
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('unique_id', data.student_id)
         .eq('role', 'student')
-        .single();
+        .or(`name.ilike.%${searchTerm}%,unique_id.ilike.%${searchTerm}%`);
       
-      if (studentError) {
-        toast({
-          title: "Student not found",
-          description: "No student found with that ID",
-          variant: "destructive",
-        });
-        return;
-      }
+      if (error) throw error;
       
-      // Check if student is already enrolled
-      const { data: existingEnrollment, error: enrollmentCheckError } = await supabase
-        .from('student_courses')
-        .select('*')
-        .eq('student_id', studentData.id)
-        .eq('course_id', course.id)
-        .single();
+      // Ensure correct typing for roles
+      const typedStudents = (data || []).map(student => ({
+        ...student,
+        role: ensureValidRole(student.role)
+      }));
       
-      if (!enrollmentCheckError && existingEnrollment) {
-        toast({
-          title: "Already enrolled",
-          description: "This student is already enrolled in this course",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Filter out already enrolled students
+      const filteredResults = typedStudents.filter(
+        student => !enrolledStudents.some(enrolled => enrolled.id === student.id)
+      );
       
-      // Assign student to course
-      const { error: assignError } = await supabase
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching students:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search students.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Enroll student in course
+  const enrollStudent = async (studentId: string) => {
+    try {
+      if (!course) return;
+      
+      const { error } = await supabase
         .from('student_courses')
         .insert({
-          student_id: studentData.id,
+          student_id: studentId,
           course_id: course.id,
-          assigned_by: profile?.id,
           progress: 0,
         });
       
-      if (assignError) throw assignError;
-      
-      // Add student to local state
-      setEnrolledStudents([
-        ...enrolledStudents, 
-        {
-          ...studentData,
-          role: ensureValidRole(studentData.role)
-        }
-      ]);
-      
-      // Reset form and close dialog
-      assignmentForm.reset();
-      setOpenAssignStudentDialog(false);
-      
-      toast({
-        title: "Student assigned",
-        description: `${studentData.name} has been assigned to this course`,
-      });
-      
-    } catch (error) {
-      console.error('Error assigning student:', error);
-      toast({
-        title: "Error",
-        description: "Failed to assign student to course",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle session edit
-  const handleEditSession = (session: Session) => {
-    setCurrentSession(session);
-    setIsEditing(true);
-    
-    sessionForm.reset({
-      title: session.title,
-      video_url: session.video_url || "",
-      material_url: session.material_url || "",
-    });
-    
-    setOpenSessionDialog(true);
-  };
-
-  // Handle session delete
-  const handleDeleteSession = async (sessionId: string) => {
-    if (!course) return;
-    
-    try {
-      // Delete session
-      const { error } = await supabase
-        .from('sessions')
-        .delete()
-        .eq('id', sessionId);
-      
       if (error) throw error;
       
-      // Update sessions list
-      const filteredSessions = sessions.filter(s => s.id !== sessionId);
-      setSessions(filteredSessions);
-      
-      // Update course total_sessions count
-      await supabase
-        .from('courses')
-        .update({ total_sessions: course.total_sessions - 1 })
-        .eq('id', course.id);
-      
-      // Update local course data
-      setCourse({
-        ...course,
-        total_sessions: course.total_sessions - 1
-      });
+      // Find the student in search results and add to enrolled
+      const studentToEnroll = searchResults.find(s => s.id === studentId);
+      if (studentToEnroll) {
+        setEnrolledStudents([...enrolledStudents, studentToEnroll]);
+        setSearchResults(searchResults.filter(s => s.id !== studentId));
+      }
       
       toast({
-        title: "Session removed",
-        description: "The session has been removed from the course",
+        title: "Success",
+        description: "Student enrolled successfully!",
       });
-      
     } catch (error) {
-      console.error('Error deleting session:', error);
+      console.error('Error enrolling student:', error);
       toast({
         title: "Error",
-        description: "Failed to delete session",
+        description: "Failed to enroll student.",
         variant: "destructive",
       });
     }
   };
-
-  // Handle student removal
-  const handleRemoveStudent = async (studentId: string) => {
-    if (!course) return;
-    
+  
+  // Remove student from course
+  const removeStudent = async (studentId: string) => {
     try {
-      // Remove student enrollment
+      if (!course) return;
+      
       const { error } = await supabase
         .from('student_courses')
         .delete()
-        .eq('student_id', studentId)
-        .eq('course_id', course.id);
+        .eq('course_id', course.id)
+        .eq('student_id', studentId);
       
       if (error) throw error;
       
-      // Update enrolled students list
       setEnrolledStudents(enrolledStudents.filter(s => s.id !== studentId));
       
       toast({
-        title: "Student removed",
-        description: "The student has been removed from this course",
+        title: "Success",
+        description: "Student removed from course.",
       });
-      
     } catch (error) {
       console.error('Error removing student:', error);
       toast({
         title: "Error",
-        description: "Failed to remove student from course",
+        description: "Failed to remove student.",
         variant: "destructive",
       });
     }
   };
-
+  
   if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[80vh]">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-t-academy-blue border-r-transparent border-b-academy-orange border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-lg text-gray-600">Loading course data...</p>
+            <Loader2 className="w-12 h-12 animate-spin text-academy-blue mx-auto mb-4" />
+            <p className="text-lg text-gray-600">Loading course details...</p>
           </div>
         </div>
       </DashboardLayout>
     );
   }
-
+  
+  if (!course) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Course not found</h2>
+          <p className="text-gray-600 mb-6">The course you're looking for doesn't exist or you don't have access.</p>
+          <Button onClick={() => navigate('/admin')}>Return to Dashboard</Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
   return (
     <DashboardLayout>
-      {course && (
-        <div className="space-y-8">
-          {/* Header */}
+      <div className="space-y-8">
+        <div className="flex justify-between items-center">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <button 
-                onClick={() => navigate('/admin')}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                ← Back to Dashboard
-              </button>
-            </div>
             <h1 className="text-3xl font-bold mb-1">{course.title}</h1>
-            {course.description && (
-              <p className="text-gray-600 mb-2">{course.description}</p>
-            )}
-            <div className="flex flex-wrap gap-2 items-center text-sm text-gray-500">
-              <span>Created: {new Date(course.created_at).toLocaleDateString()}</span>
-              <span>•</span>
-              <span>Sessions: {course.total_sessions}</span>
-              <span>•</span>
-              <span>Students: {enrolledStudents.length}</span>
-            </div>
+            <p className="text-muted-foreground">
+              {course.description || "No description provided"}
+            </p>
           </div>
+          <Button onClick={() => navigate('/admin')} variant="outline">
+            Back to Dashboard
+          </Button>
+        </div>
+        
+        <Tabs defaultValue="sessions" className="w-full">
+          <TabsList>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="students">Enrolled Students</TabsTrigger>
+          </TabsList>
           
-          {/* Tabs */}
-          <Tabs defaultValue="sessions" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="sessions">Sessions</TabsTrigger>
-              <TabsTrigger value="students">Students</TabsTrigger>
-            </TabsList>
+          <TabsContent value="sessions" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Course Sessions</h2>
+              <Dialog open={showSessionDialog} onOpenChange={setShowSessionDialog}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" /> Add Session
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Session</DialogTitle>
+                    <DialogDescription>
+                      Add a new learning session to this course.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <form onSubmit={handleCreateSession} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Session Title *</Label>
+                      <Input
+                        id="title"
+                        placeholder="Enter session title"
+                        value={sessionForm.title}
+                        onChange={(e) => setSessionForm({...sessionForm, title: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="video_url">Video URL (optional)</Label>
+                      <Input
+                        id="video_url"
+                        placeholder="Enter video URL"
+                        value={sessionForm.video_url}
+                        onChange={(e) => setSessionForm({...sessionForm, video_url: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="material_url">Material URL (optional)</Label>
+                      <Input
+                        id="material_url"
+                        placeholder="Enter material URL"
+                        value={sessionForm.material_url}
+                        onChange={(e) => setSessionForm({...sessionForm, material_url: e.target.value})}
+                      />
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setShowSessionDialog(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">Create Session</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
             
-            {/* Sessions Tab */}
-            <TabsContent value="sessions" className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">Course Sessions</h2>
-                <Button onClick={() => {
-                  setIsEditing(false);
-                  setCurrentSession(null);
-                  sessionForm.reset({
-                    title: "",
-                    video_url: "",
-                    material_url: "",
-                  });
-                  setOpenSessionDialog(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Session
-                </Button>
+            {sessions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    courseId={course.id}
+                    isAdmin={true}
+                  />
+                ))}
               </div>
-              
-              {sessions.length > 0 ? (
-                <div className="space-y-4">
-                  {sessions.map((session, index) => (
-                    <Card key={session.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-gray-200 flex items-center justify-center w-10 h-10 rounded-full">
-                              <span className="font-medium">{index + 1}</span>
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-lg">{session.title}</h3>
-                              <div className="flex gap-4 text-sm text-gray-500">
-                                {session.video_url && (
-                                  <a 
-                                    href={session.video_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:underline"
-                                  >
-                                    Video
-                                  </a>
-                                )}
-                                {session.material_url && (
-                                  <a 
-                                    href={session.material_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:underline"
-                                  >
-                                    Materials
-                                  </a>
+            ) : (
+              <Card className="bg-gray-50 border border-gray-200">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <h3 className="font-medium text-gray-900 mb-1">No sessions yet</h3>
+                  <p className="text-gray-600 mb-4">
+                    Add your first session to get started
+                  </p>
+                  <Button onClick={() => setShowSessionDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" /> Add First Session
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="students" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Enrolled Students</h2>
+              <Dialog open={showStudentDialog} onOpenChange={setShowStudentDialog}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" /> Add Students
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Students to Course</DialogTitle>
+                    <DialogDescription>
+                      Search for students by name or ID to enroll them in this course.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        placeholder="Search students by name or ID..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button type="button" onClick={searchStudents}>
+                        <Search className="h-4 w-4 mr-2" /> Search
+                      </Button>
+                    </div>
+                    
+                    <div className="max-h-60 overflow-y-auto border rounded-lg divide-y">
+                      {searchResults.length > 0 ? (
+                        searchResults.map((student) => (
+                          <div key={student.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                            <div className="flex items-center gap-3">
+                              <User className="h-5 w-5 text-gray-500" />
+                              <div>
+                                <p className="font-medium">{student.name}</p>
+                                {student.unique_id && (
+                                  <p className="text-sm text-gray-500">ID: {student.unique_id}</p>
                                 )}
                               </div>
                             </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleEditSession(session)}
-                            >
-                              <Edit className="w-4 h-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm" 
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => handleDeleteSession(session.id)}
+                              onClick={() => enrollStudent(student.id)}
                             >
-                              <Trash2 className="w-4 h-4" />
-                              <span className="sr-only">Delete</span>
+                              Enroll
                             </Button>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-                  <h3 className="font-medium text-gray-900 mb-1">No sessions yet</h3>
-                  <p className="text-gray-600 mb-4">
-                    This course doesn't have any sessions yet. Add your first session to get started.
-                  </p>
-                  <Button onClick={() => setOpenSessionDialog(true)}>
-                    <Plus className="w-4 h-4 mr-2" /> Add First Session
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
+                        ))
+                      ) : searchTerm ? (
+                        <div className="p-4 text-center text-gray-500">No students found</div>
+                      ) : (
+                        <div className="p-4 text-center text-gray-500">Search for students to enroll</div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <DialogFooter>
+                    <Button type="button" onClick={() => setShowStudentDialog(false)}>Close</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
             
-            {/* Students Tab */}
-            <TabsContent value="students" className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">Enrolled Students</h2>
-                <Button onClick={() => setOpenAssignStudentDialog(true)}>
-                  <UserPlus className="w-4 h-4 mr-2" /> Assign Student
-                </Button>
-              </div>
-              
-              {enrolledStudents.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            {enrolledStudents.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {enrolledStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="font-medium text-gray-900">{student.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{student.unique_id || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                            onClick={() => removeStudent(student.id)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" /> Remove
+                          </Button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {enrolledStudents.map((student) => (
-                        <tr key={student.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{student.unique_id || 'N/A'}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{student.total_points}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => handleRemoveStudent(student.id)}
-                            >
-                              Remove
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-                  <h3 className="font-medium text-gray-900 mb-1">No students yet</h3>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <Card className="bg-gray-50 border border-gray-200">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <h3 className="font-medium text-gray-900 mb-1">No students enrolled</h3>
                   <p className="text-gray-600 mb-4">
-                    This course doesn't have any students enrolled yet. Assign students to get started.
+                    Add students to this course to get started
                   </p>
-                  <Button onClick={() => setOpenAssignStudentDialog(true)}>
-                    <UserPlus className="w-4 h-4 mr-2" /> Assign Student
+                  <Button onClick={() => setShowStudentDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" /> Add Students
                   </Button>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-          
-          {/* Add Session Dialog */}
-          <Dialog open={openSessionDialog} onOpenChange={setOpenSessionDialog}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {isEditing ? 'Edit Session' : 'Add New Session'}
-                </DialogTitle>
-              </DialogHeader>
-              <Form {...sessionForm}>
-                <form onSubmit={sessionForm.handleSubmit(handleSessionSubmit)} className="space-y-4">
-                  <FormField
-                    control={sessionForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Session Title</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Introduction to Variables" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={sessionForm.control}
-                    name="video_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Video URL (Optional)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="url" placeholder="https://youtube.com/watch?v=..." />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={sessionForm.control}
-                    name="material_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Materials URL (Optional)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="url" placeholder="https://drive.google.com/..." />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <DialogFooter>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => {
-                        setOpenSessionDialog(false);
-                        setIsEditing(false);
-                        setCurrentSession(null);
-                        sessionForm.reset();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      {isEditing ? 'Save Changes' : 'Add Session'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-          
-          {/* Assign Student Dialog */}
-          <Dialog open={openAssignStudentDialog} onOpenChange={setOpenAssignStudentDialog}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Assign Student to Course</DialogTitle>
-              </DialogHeader>
-              <Form {...assignmentForm}>
-                <form onSubmit={assignmentForm.handleSubmit(handleAssignStudent)} className="space-y-4">
-                  <FormField
-                    control={assignmentForm.control}
-                    name="student_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Student ID</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter 4-digit student ID" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <DialogFooter>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => {
-                        setOpenAssignStudentDialog(false);
-                        assignmentForm.reset();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">Assign Student</Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
     </DashboardLayout>
   );
 };
