@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useForm } from "react-hook-form";
@@ -90,6 +89,7 @@ export function AuthForm({ defaultMode = "login" }: AuthFormProps) {
       age: age ? parseInt(age, 10) : undefined,
       phone,
       location,
+      role: "student", // Default role for new users
     };
     
     const { error } = await signUp(email, password, userData);

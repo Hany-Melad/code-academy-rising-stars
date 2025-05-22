@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, ensureValidRole } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -74,7 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(data);
   };
 
-  
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -99,14 +98,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, userData: Partial<Profile>) => {
     try {
+      // Process the userData to ensure it includes necessary fields
+      const processedUserData = {
+        name: userData.name || "",
+        email: email,
+        role: ensureValidRole(userData.role || "student"),
+        age: userData.age || null,
+        phone: userData.phone || null,
+        location: userData.location || null,
+      };
+
+      // Sign up the user with the processed data
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: userData,
+          data: processedUserData,
         },
       });
+      
       if (error) throw error;
+      
+      // After successful signup, notify the user
       toast({
         title: "Account created",
         description: "Your account has been successfully created.",
