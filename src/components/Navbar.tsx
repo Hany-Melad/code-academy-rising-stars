@@ -1,17 +1,23 @@
 
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 
 export function Navbar() {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
 
   const getDashboardLink = () => {
@@ -41,11 +47,21 @@ export function Navbar() {
             </Link>
             
             {user ? (
-              <Button asChild className="bg-academy-orange hover:bg-orange-600">
-                <Link to={getDashboardLink()}>
-                  {isAdmin ? "Admin Dashboard" : "My Dashboard"}
-                </Link>
-              </Button>
+              <div className="flex items-center space-x-3">
+                <Button asChild className="bg-academy-orange hover:bg-orange-600">
+                  <Link to={getDashboardLink()}>
+                    {isAdmin ? "Admin Dashboard" : "My Dashboard"}
+                  </Link>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleSignOut}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </Button>
+              </div>
             ) : (
               <Button asChild variant="outline" className="text-academy-blue border-academy-blue hover:bg-academy-lightBlue">
                 <Link to="/auth">Sign In</Link>
@@ -95,13 +111,25 @@ export function Navbar() {
               Courses
             </Link>
             {user ? (
-              <Link
-                to={getDashboardLink()}
-                className="block px-3 py-2 text-base font-medium text-academy-blue hover:bg-gray-50"
-                onClick={toggleMenu}
-              >
-                {isAdmin ? "Admin Dashboard" : "My Dashboard"}
-              </Link>
+              <>
+                <Link
+                  to={getDashboardLink()}
+                  className="block px-3 py-2 text-base font-medium text-academy-blue hover:bg-gray-50"
+                  onClick={toggleMenu}
+                >
+                  {isAdmin ? "Admin Dashboard" : "My Dashboard"}
+                </Link>
+                <button
+                  onClick={() => {
+                    handleSignOut();
+                    toggleMenu();
+                  }}
+                  className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-gray-50"
+                >
+                  <LogOut className="w-4 h-4 inline mr-2" />
+                  Sign Out
+                </button>
+              </>
             ) : (
               <Link
                 to="/auth"

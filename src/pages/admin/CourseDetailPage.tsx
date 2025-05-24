@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -27,6 +26,7 @@ const CourseDetailPage = () => {
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [showSessionDialog, setShowSessionDialog] = useState(false);
   const [showStudentDialog, setShowStudentDialog] = useState(false);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionForm, setSessionForm] = useState({
     title: "",
     video_url: "",
@@ -39,6 +39,8 @@ const CourseDetailPage = () => {
       try {
         if (!courseId) return;
         
+        console.log("Fetching course details for:", courseId);
+        
         // Fetch course details
         const { data: courseData, error: courseError } = await supabase
           .from('courses')
@@ -46,7 +48,10 @@ const CourseDetailPage = () => {
           .eq('id', courseId)
           .single();
         
-        if (courseError) throw courseError;
+        if (courseError) {
+          console.error("Course fetch error:", courseError);
+          throw courseError;
+        }
         setCourse(courseData);
         
         // Fetch sessions
@@ -56,7 +61,10 @@ const CourseDetailPage = () => {
           .eq('course_id', courseId)
           .order('order_number', { ascending: true });
         
-        if (sessionsError) throw sessionsError;
+        if (sessionsError) {
+          console.error("Sessions fetch error:", sessionsError);
+          throw sessionsError;
+        }
         setSessions(sessionsData || []);
         
         // Fetch enrolled students
@@ -65,7 +73,10 @@ const CourseDetailPage = () => {
           .select('student_id')
           .eq('course_id', courseId);
         
-        if (enrolledError) throw enrolledError;
+        if (enrolledError) {
+          console.error("Enrolled students fetch error:", enrolledError);
+          throw enrolledError;
+        }
         
         if (enrolledData && enrolledData.length > 0) {
           const studentIds = enrolledData.map(sc => sc.student_id);
@@ -75,7 +86,10 @@ const CourseDetailPage = () => {
             .select('*')
             .in('id', studentIds);
           
-          if (studentsError) throw studentsError;
+          if (studentsError) {
+            console.error("Students data fetch error:", studentsError);
+            throw studentsError;
+          }
           
           // Ensure correct typing for roles
           const typedStudents = (studentsData || []).map(student => ({
@@ -105,8 +119,21 @@ const CourseDetailPage = () => {
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!sessionForm.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Session title is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsCreatingSession(true);
+    
     try {
       if (!course) return;
+      
+      console.log("Creating session with data:", sessionForm);
       
       const nextOrderNumber = sessions.length + 1;
       
@@ -114,15 +141,20 @@ const CourseDetailPage = () => {
         .from('sessions')
         .insert({
           course_id: course.id,
-          title: sessionForm.title,
-          video_url: sessionForm.video_url || null,
-          material_url: sessionForm.material_url || null,
+          title: sessionForm.title.trim(),
+          video_url: sessionForm.video_url.trim() || null,
+          material_url: sessionForm.material_url.trim() || null,
           order_number: nextOrderNumber,
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Session creation error:", error);
+        throw error;
+      }
+      
+      console.log("Session created successfully:", data);
       
       setSessions([...sessions, data]);
       setSessionForm({ title: "", video_url: "", material_url: "" });
@@ -136,9 +168,11 @@ const CourseDetailPage = () => {
       console.error('Error creating session:', error);
       toast({
         title: "Error",
-        description: "Failed to create session.",
+        description: `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
+    } finally {
+      setIsCreatingSession(false);
     }
   };
   
@@ -150,13 +184,21 @@ const CourseDetailPage = () => {
         return;
       }
       
+      console.log("Searching for students with term:", searchTerm);
+      
+      // Search by name or unique_id with case-insensitive matching
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('role', 'student')
-        .or(`name.ilike.%${searchTerm}%,unique_id.ilike.%${searchTerm}%`);
+        .or(`name.ilike.%${searchTerm}%,unique_id.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Student search error:", error);
+        throw error;
+      }
+      
+      console.log("Search results:", data);
       
       // Ensure correct typing for roles
       const typedStudents = (data || []).map(student => ({
@@ -170,6 +212,13 @@ const CourseDetailPage = () => {
       );
       
       setSearchResults(filteredResults);
+      
+      if (filteredResults.length === 0 && data && data.length > 0) {
+        toast({
+          title: "Info",
+          description: "All matching students are already enrolled in this course.",
+        });
+      }
     } catch (error) {
       console.error('Error searching students:', error);
       toast({
@@ -180,7 +229,6 @@ const CourseDetailPage = () => {
     }
   };
   
-  // Enroll student in course
   const enrollStudent = async (studentId: string) => {
     try {
       if (!course) return;
@@ -216,7 +264,6 @@ const CourseDetailPage = () => {
     }
   };
   
-  // Remove student from course
   const removeStudent = async (studentId: string) => {
     try {
       if (!course) return;
@@ -341,10 +388,24 @@ const CourseDetailPage = () => {
                     </div>
                     
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setShowSessionDialog(false)}>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setShowSessionDialog(false)}
+                        disabled={isCreatingSession}
+                      >
                         Cancel
                       </Button>
-                      <Button type="submit">Create Session</Button>
+                      <Button type="submit" disabled={isCreatingSession}>
+                        {isCreatingSession ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          "Create Session"
+                        )}
+                      </Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -390,17 +451,23 @@ const CourseDetailPage = () => {
                   <DialogHeader>
                     <DialogTitle>Add Students to Course</DialogTitle>
                     <DialogDescription>
-                      Search for students by name or ID to enroll them in this course.
+                      Search for students by name, email, or ID to enroll them in this course.
                     </DialogDescription>
                   </DialogHeader>
                   
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Input
-                        placeholder="Search students by name or ID..."
+                        placeholder="Search students by name, email, or ID..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            searchStudents();
+                          }
+                        }}
                       />
                       <Button type="button" onClick={searchStudents}>
                         <Search className="h-4 w-4 mr-2" /> Search
@@ -415,6 +482,7 @@ const CourseDetailPage = () => {
                               <User className="h-5 w-5 text-gray-500" />
                               <div>
                                 <p className="font-medium">{student.name}</p>
+                                <p className="text-sm text-gray-500">{student.email}</p>
                                 {student.unique_id && (
                                   <p className="text-sm text-gray-500">ID: {student.unique_id}</p>
                                 )}
@@ -450,6 +518,7 @@ const CourseDetailPage = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -459,6 +528,9 @@ const CourseDetailPage = () => {
                       <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium text-gray-900">{student.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{student.email}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">{student.unique_id || '-'}</div>

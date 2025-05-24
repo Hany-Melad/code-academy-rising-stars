@@ -8,15 +8,16 @@ import { CourseCard } from "@/components/courses/CourseCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, ensureValidRole } from "@/lib/supabase";
 import { Course, Profile, StudentCourse } from "@/types/supabase";
-import { Award, BookOpen, CheckCircle, Clock } from "lucide-react";
+import { Award, BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const StudentDashboard = () => {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<{course: Course, studentCourse: StudentCourse}[]>([]);
   const [topStudents, setTopStudents] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
@@ -27,39 +28,51 @@ const StudentDashboard = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        if (!profile) {
-          console.log("No profile found, waiting...");
+        console.log("Starting dashboard data fetch...");
+        console.log("User:", user);
+        console.log("Profile:", profile);
+        
+        if (!profile || !user) {
+          console.log("No profile or user found, waiting...");
+          setLoading(false);
+          setError("Please sign in to view your dashboard");
           return;
         }
         
         console.log("Fetching student dashboard data for profile:", profile.id);
         
-        // Fetch enrolled courses
+        // Fetch enrolled courses with better error handling
         const { data: enrolledCoursesData, error: enrolledError } = await supabase
           .from('student_courses')
-          .select('*, course:courses(*)')
+          .select(`
+            *,
+            course:courses(*)
+          `)
           .eq('student_id', profile.id);
         
         if (enrolledError) {
           console.error("Error fetching enrolled courses:", enrolledError);
-          throw enrolledError;
+          setError(`Failed to load courses: ${enrolledError.message}`);
+          return;
         }
         
         console.log("Enrolled courses data:", enrolledCoursesData);
         
-        // Format courses data
-        const formattedCourses = enrolledCoursesData?.map(data => ({
-          course: data.course as Course,
-          studentCourse: {
-            id: data.id,
-            student_id: data.student_id,
-            course_id: data.course_id,
-            progress: data.progress,
-            assigned_at: data.assigned_at,
-            assigned_by: data.assigned_by,
-            completed_at: data.completed_at,
-          } as StudentCourse
-        })) || [];
+        // Format courses data with null checking
+        const formattedCourses = (enrolledCoursesData || [])
+          .filter(data => data.course) // Filter out null courses
+          .map(data => ({
+            course: data.course as Course,
+            studentCourse: {
+              id: data.id,
+              student_id: data.student_id,
+              course_id: data.course_id,
+              progress: data.progress || 0,
+              assigned_at: data.assigned_at,
+              assigned_by: data.assigned_by,
+              completed_at: data.completed_at,
+            } as StudentCourse
+          }));
         
         setCourses(formattedCourses);
         
@@ -67,12 +80,12 @@ const StudentDashboard = () => {
         setStats({
           totalCourses: formattedCourses.length,
           completedCourses: formattedCourses.filter(c => 
-            c.studentCourse.progress === c.course.total_sessions
+            c.course.total_sessions > 0 && c.studentCourse.progress >= c.course.total_sessions
           ).length,
           completedSessions: formattedCourses.reduce((acc, curr) => 
-            acc + curr.studentCourse.progress, 0
+            acc + (curr.studentCourse.progress || 0), 0
           ),
-          totalPoints: profile.total_points,
+          totalPoints: profile.total_points || 0,
         });
         
         // Fetch top students
@@ -85,21 +98,22 @@ const StudentDashboard = () => {
         
         if (studentsError) {
           console.error("Error fetching top students:", studentsError);
-          throw studentsError;
+          // Don't fail the whole dashboard for this
+        } else {
+          console.log("Top students data:", studentsData);
+          
+          // Ensure correct typing for roles
+          const typedStudents = (studentsData || []).map(student => ({
+            ...student,
+            role: ensureValidRole(student.role)
+          }));
+          
+          setTopStudents(typedStudents);
         }
-        
-        console.log("Top students data:", studentsData);
-        
-        // Ensure correct typing for roles
-        const typedStudents = (studentsData || []).map(student => ({
-          ...student,
-          role: ensureValidRole(student.role)
-        }));
-        
-        setTopStudents(typedStudents);
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        setError(`Failed to load dashboard: ${error instanceof Error ? error.message : 'Unknown error'}`);
         toast({
           title: "Error",
           description: "Failed to load dashboard data",
@@ -110,15 +124,38 @@ const StudentDashboard = () => {
       }
     };
     
-    fetchDashboardData();
-  }, [profile, toast]);
+    // Only fetch data if we have both user and profile
+    if (user && profile) {
+      fetchDashboardData();
+    } else if (!user) {
+      setLoading(false);
+      setError("Please sign in to view your dashboard");
+    }
+  }, [profile, user, toast]);
   
   // Prepare progress graph data
   const progressData = courses.map(({ course, studentCourse }) => ({
     name: course.title.length > 15 ? course.title.substring(0, 15) + '...' : course.title,
-    completed: studentCourse.progress,
-    total: course.total_sessions,
+    completed: studentCourse.progress || 0,
+    total: course.total_sessions || 0,
   }));
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[80vh]">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Dashboard Error</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (loading) {
     return (
