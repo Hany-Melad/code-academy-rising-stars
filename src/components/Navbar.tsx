@@ -19,12 +19,17 @@ export function Navbar() {
   };
 
   const handleSignOut = async () => {
+    if (isSigningOut) return; // Prevent multiple clicks
+    
     try {
       setIsSigningOut(true);
       console.log("Starting sign out process...");
+      
       await signOut();
+      
       console.log("Sign out completed, navigating to home...");
-      navigate("/");
+      navigate("/", { replace: true });
+      
       toast({
         title: "Signed out successfully",
         description: "You have been signed out of your account",

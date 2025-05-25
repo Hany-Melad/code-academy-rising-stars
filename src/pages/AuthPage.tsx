@@ -7,11 +7,23 @@ import { Navigate } from "react-router-dom";
 const AuthPage = () => {
   const { user, isLoading, isAdmin } = useAuth();
   
+  console.log("AuthPage render - user:", user, "isLoading:", isLoading, "isAdmin:", isAdmin);
+  
   if (isLoading) {
-    return null;
+    return (
+      <MainLayout hideFooter>
+        <div className="flex min-h-[calc(100vh-4rem)] bg-gray-50 items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-t-academy-blue border-r-transparent border-b-academy-orange border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-lg text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
   }
   
   if (user) {
+    console.log("User authenticated, redirecting to dashboard");
     return <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />;
   }
 
