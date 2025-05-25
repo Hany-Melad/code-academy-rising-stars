@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -145,11 +144,21 @@ const SessionViewPage = () => {
 
       if (profileError) throw profileError;
 
+      // Get current course progress and increment it
+      const { data: currentCourse, error: getCourseError } = await supabase
+        .from('student_courses')
+        .select('progress')
+        .eq('student_id', profile.id)
+        .eq('course_id', courseId)
+        .single();
+
+      if (getCourseError) throw getCourseError;
+
       // Update course progress
       const { error: progressError } = await supabase
         .from('student_courses')
         .update({
-          progress: supabase.raw('progress + 1'),
+          progress: (currentCourse.progress || 0) + 1,
         })
         .eq('student_id', profile.id)
         .eq('course_id', courseId);
