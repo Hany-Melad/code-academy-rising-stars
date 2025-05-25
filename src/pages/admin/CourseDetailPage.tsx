@@ -156,7 +156,23 @@ const CourseDetailPage = () => {
       
       console.log("Session created successfully:", data);
       
+      // Update sessions list
       setSessions([...sessions, data]);
+      
+      // Update course total_sessions count
+      const newTotalSessions = sessions.length + 1;
+      const { error: courseUpdateError } = await supabase
+        .from('courses')
+        .update({ total_sessions: newTotalSessions })
+        .eq('id', course.id);
+      
+      if (courseUpdateError) {
+        console.error("Error updating course session count:", courseUpdateError);
+      } else {
+        // Update local course state
+        setCourse({ ...course, total_sessions: newTotalSessions });
+      }
+      
       setSessionForm({ title: "", video_url: "", material_url: "" });
       setShowSessionDialog(false);
       
@@ -325,6 +341,9 @@ const CourseDetailPage = () => {
             <h1 className="text-3xl font-bold mb-1">{course.title}</h1>
             <p className="text-muted-foreground">
               {course.description || "No description provided"}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {course.total_sessions} {course.total_sessions === 1 ? 'session' : 'sessions'}
             </p>
           </div>
           <Button onClick={() => navigate('/admin')} variant="outline">

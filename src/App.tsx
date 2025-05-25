@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +17,8 @@ import CoursesPage from "./pages/CoursesPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
+import SessionViewPage from "./pages/SessionViewPage";
+import AdminSessionPage from "./pages/admin/AdminSessionPage";
 
 const queryClient = new QueryClient();
 
@@ -36,13 +39,14 @@ const App = () => (
               <Route path="/dashboard" element={<StudentDashboard />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/courses/:courseId/sessions/:sessionId" element={<SessionViewPage />} />
             </Route>
             
             {/* Protected admin routes */}
             <Route element={<ProtectedRoute requiredRole="admin" redirectPath="/dashboard" />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/courses/:courseId" element={<CourseDetailPage />} />
-              {/* Other admin routes would go here */}
+              <Route path="/admin/courses/:courseId/sessions/:sessionId" element={<AdminSessionPage />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
