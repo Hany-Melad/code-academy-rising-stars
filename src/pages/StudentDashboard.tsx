@@ -13,12 +13,13 @@ import { Award, BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const StudentDashboard = () => {
-  const { profile, user } = useAuth();
+  const { profile, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<{course: Course, studentCourse: StudentCourse}[]>([]);
   const [topStudents, setTopStudents] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataFetched, setDataFetched] = useState(false);
   const [stats, setStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
@@ -27,22 +28,40 @@ const StudentDashboard = () => {
   });
 
   useEffect(() => {
+    console.log("StudentDashboard useEffect triggered");
+    console.log("Auth loading:", authLoading);
+    console.log("User:", user);
+    console.log("Profile:", profile);
+    console.log("Data fetched:", dataFetched);
+
+    // Don't fetch if auth is still loading or data already fetched
+    if (authLoading || dataFetched) {
+      console.log("Skipping fetch - auth loading or data already fetched");
+      return;
+    }
+
+    // If no user, set error and stop loading
+    if (!user) {
+      console.log("No user found");
+      setError("Please sign in to view your dashboard");
+      setLoading(false);
+      return;
+    }
+
+    // If no profile yet, wait for it
+    if (!profile) {
+      console.log("No profile found, waiting...");
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
-        console.log("Starting dashboard data fetch...");
-        console.log("User:", user);
-        console.log("Profile:", profile);
+        console.log("Starting dashboard data fetch for user:", user.id);
+        setLoading(true);
+        setError(null);
         
-        if (!profile || !user) {
-          console.log("No profile or user found, waiting...");
-          setLoading(false);
-          setError("Please sign in to view your dashboard");
-          return;
-        }
-        
-        console.log("Fetching student dashboard data for profile:", profile.id);
-        
-        // Fetch enrolled courses with better error handling
+        // Fetch enrolled courses
+        console.log("Fetching enrolled courses for profile:", profile.id);
         const { data: enrolledCoursesData, error: enrolledError } = await supabase
           .from('student_courses')
           .select(`
@@ -53,15 +72,14 @@ const StudentDashboard = () => {
         
         if (enrolledError) {
           console.error("Error fetching enrolled courses:", enrolledError);
-          setError(`Failed to load courses: ${enrolledError.message}`);
-          return;
+          throw enrolledError;
         }
         
         console.log("Enrolled courses data:", enrolledCoursesData);
         
-        // Format courses data with null checking
+        // Format courses data
         const formattedCourses = (enrolledCoursesData || [])
-          .filter(data => data.course) // Filter out null courses
+          .filter(data => data.course)
           .map(data => ({
             course: data.course as Course,
             studentCourse: {
@@ -90,6 +108,7 @@ const StudentDashboard = () => {
         });
         
         // Fetch top students
+        console.log("Fetching top students");
         const { data: studentsData, error: studentsError } = await supabase
           .from('profiles')
           .select('*')
@@ -99,22 +118,22 @@ const StudentDashboard = () => {
         
         if (studentsError) {
           console.error("Error fetching top students:", studentsError);
-          // Don't fail the whole dashboard for this
         } else {
           console.log("Top students data:", studentsData);
-          
-          // Ensure correct typing for roles
           const typedStudents = (studentsData || []).map(student => ({
             ...student,
             role: ensureValidRole(student.role)
           }));
-          
           setTopStudents(typedStudents);
         }
         
+        setDataFetched(true);
+        console.log("Dashboard data fetch completed successfully");
+        
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        setError(`Failed to load dashboard: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setError(`Failed to load dashboard: ${errorMessage}`);
         toast({
           title: "Error",
           description: "Failed to load dashboard data",
@@ -125,14 +144,8 @@ const StudentDashboard = () => {
       }
     };
     
-    // Only fetch data if we have both user and profile
-    if (user && profile) {
-      fetchDashboardData();
-    } else if (!user) {
-      setLoading(false);
-      setError("Please sign in to view your dashboard");
-    }
-  }, [profile, user, toast]);
+    fetchDashboardData();
+  }, [profile, user, authLoading, dataFetched, toast]);
   
   // Prepare progress graph data
   const progressData = courses.map(({ course, studentCourse }) => ({
@@ -141,6 +154,21 @@ const StudentDashboard = () => {
     total: course.total_sessions || 0,
   }));
 
+  // Show loading state
+  if (authLoading || loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[80vh]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-t-academy-blue border-r-transparent border-b-academy-orange border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-lg text-gray-600">Loading dashboard data...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show error state
   if (error) {
     return (
       <DashboardLayout>
@@ -149,22 +177,13 @@ const StudentDashboard = () => {
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Dashboard Error</h2>
             <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>
+            <Button onClick={() => {
+              setError(null);
+              setDataFetched(false);
+              setLoading(true);
+            }}>
               Try Again
             </Button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-[80vh]">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-t-academy-blue border-r-transparent border-b-academy-orange border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-lg text-gray-600">Loading dashboard data...</p>
           </div>
         </div>
       </DashboardLayout>

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -26,11 +27,12 @@ const courseFormSchema = z.object({
 type CourseFormValues = z.infer<typeof courseFormSchema>;
 
 const AdminDashboard = () => {
-  const { profile } = useAuth();
+  const { profile, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [students, setStudents] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [dataFetched, setDataFetched] = useState(false);
   const [openCourseDialog, setOpenCourseDialog] = useState(false);
 
   // Course form setup
@@ -43,16 +45,31 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
+    console.log("AdminDashboard useEffect triggered");
+    console.log("Auth loading:", authLoading);
+    console.log("User:", user);
+    console.log("Profile:", profile);
+    console.log("Data fetched:", dataFetched);
+
+    // Don't fetch if auth is still loading or data already fetched
+    if (authLoading || dataFetched) {
+      console.log("Skipping fetch - auth loading or data already fetched");
+      return;
+    }
+
+    // If no user or profile, wait
+    if (!user || !profile) {
+      console.log("No user or profile found, waiting...");
+      return;
+    }
+
     const fetchAdminDashboardData = async () => {
       try {
-        if (!profile) {
-          console.log("No profile found, waiting...");
-          return;
-        }
-        
-        console.log("Fetching admin dashboard data for profile:", profile.id);
+        console.log("Starting admin dashboard data fetch for profile:", profile.id);
+        setLoading(true);
         
         // Fetch all courses
+        console.log("Fetching courses...");
         const { data: coursesData, error: coursesError } = await supabase
           .from('courses')
           .select('*')
@@ -67,6 +84,7 @@ const AdminDashboard = () => {
         setCourses(coursesData || []);
         
         // Fetch all students
+        console.log("Fetching students...");
         const { data: studentsData, error: studentsError } = await supabase
           .from('profiles')
           .select('*')
@@ -87,6 +105,8 @@ const AdminDashboard = () => {
         }));
         
         setStudents(typedStudents);
+        setDataFetched(true);
+        console.log("Admin dashboard data fetch completed successfully");
         
       } catch (error) {
         console.error('Error fetching admin dashboard data:', error);
@@ -101,11 +121,12 @@ const AdminDashboard = () => {
     };
     
     fetchAdminDashboardData();
-  }, [profile, toast]);
+  }, [profile, user, authLoading, dataFetched, toast]);
 
   // Handle course creation
   const handleCreateCourse = async (data: CourseFormValues) => {
     try {
+      console.log("Creating course with data:", data);
       const { error } = await supabase
         .from('courses')
         .insert({
@@ -142,7 +163,8 @@ const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
+  // Show loading state
+  if (authLoading || loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[80vh]">

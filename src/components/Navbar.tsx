@@ -5,19 +5,40 @@ import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Menu, X, LogOut } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export function Navbar() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+    try {
+      setIsSigningOut(true);
+      console.log("Starting sign out process...");
+      await signOut();
+      console.log("Sign out completed, navigating to home...");
+      navigate("/");
+      toast({
+        title: "Signed out successfully",
+        description: "You have been signed out of your account",
+      });
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast({
+        title: "Sign out failed",
+        description: "There was an error signing out. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   const getDashboardLink = () => {
@@ -56,10 +77,11 @@ export function Navbar() {
                 <Button 
                   variant="outline" 
                   onClick={handleSignOut}
+                  disabled={isSigningOut}
                   className="flex items-center gap-2"
                 >
                   <LogOut className="w-4 h-4" />
-                  Sign Out
+                  {isSigningOut ? "Signing out..." : "Sign Out"}
                 </Button>
               </div>
             ) : (
@@ -124,10 +146,11 @@ export function Navbar() {
                     handleSignOut();
                     toggleMenu();
                   }}
-                  className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-gray-50"
+                  disabled={isSigningOut}
+                  className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-gray-50 disabled:opacity-50"
                 >
                   <LogOut className="w-4 h-4 inline mr-2" />
-                  Sign Out
+                  {isSigningOut ? "Signing out..." : "Sign Out"}
                 </button>
               </>
             ) : (
