@@ -5,6 +5,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
 import { ProgressGraph } from "@/components/dashboard/ProgressGraph";
 import { CourseCard } from "@/components/courses/CourseCard";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, ensureValidRole } from "@/lib/supabase";
 import { Course, Profile, StudentCourse } from "@/types/supabase";
