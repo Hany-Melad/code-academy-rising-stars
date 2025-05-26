@@ -31,27 +31,29 @@ export function SessionCard({
   const hasVideo = Boolean(session.video_url);
   const hasMaterials = Boolean(session.material_url);
 
-  // For students, check if session is visible and has content
-  const canAccess = isAdmin || (isVisible && hasVideo);
+  // For students, session is only accessible if it has video content
+  // For admins, they can always access sessions
+  const canAccess = isAdmin || hasVideo;
+  const showAsVisible = isAdmin ? hasVideo : isVisible && hasVideo;
 
   return (
     <Card className={cn("overflow-hidden transition-all", {
       "hover:shadow-md": canAccess && !isLocked,
-      "opacity-75": isLocked || (!isAdmin && !isVisible),
+      "opacity-75": isLocked || (!isAdmin && !hasVideo),
     })}>
       <CardHeader className={cn("pb-2", {
         "bg-green-50": isCompleted,
-        "bg-academy-lightBlue": canAccess && !isCompleted,
-        "bg-gray-100": isLocked || (!isAdmin && !isVisible),
+        "bg-academy-lightBlue": canAccess && !isCompleted && showAsVisible,
+        "bg-gray-100": isLocked || (!isAdmin && !hasVideo) || (!isAdmin && !showAsVisible),
       })}>
         <div className="flex justify-between items-start">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">Session {session.order_number}</CardTitle>
-              {isAdmin && !isVisible && (
+              {isAdmin && !hasVideo && (
                 <Badge variant="outline" className="text-xs">
                   <Eye className="h-3 w-3 mr-1" />
-                  Hidden
+                  No Video
                 </Badge>
               )}
             </div>
@@ -97,15 +99,15 @@ export function SessionCard({
           size="sm"
           className={cn({
             "bg-academy-blue hover:bg-blue-600": isCompleted,
-            "bg-academy-orange hover:bg-orange-600": canAccess && !isCompleted,
-            "bg-gray-300 cursor-not-allowed": !canAccess || isLocked,
+            "bg-academy-orange hover:bg-orange-600": canAccess && !isCompleted && showAsVisible,
+            "bg-gray-300 cursor-not-allowed": !canAccess || isLocked || (!isAdmin && !showAsVisible),
           })}
-          disabled={!canAccess || isLocked}
-          asChild={canAccess && !isLocked}
+          disabled={!canAccess || isLocked || (!isAdmin && !showAsVisible)}
+          asChild={canAccess && !isLocked && (isAdmin || showAsVisible)}
         >
-          {!canAccess || isLocked ? (
+          {!canAccess || isLocked || (!isAdmin && !showAsVisible) ? (
             <span>
-              {isLocked ? "Locked" : !isVisible ? "Hidden" : "No Content"}
+              {isLocked ? "Locked" : !hasVideo ? "No Content" : "Not Available"}
             </span>
           ) : (
             <Link to={isAdmin ? `/admin/courses/${courseId}/sessions/${session.id}` : `/courses/${courseId}/sessions/${session.id}`}>

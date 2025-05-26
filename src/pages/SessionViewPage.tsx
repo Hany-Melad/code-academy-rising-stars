@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, PlayCircle, CheckCircle, ExternalLink, Download, ArrowLeft } from "lucide-react";
+import { Loader2, PlayCircle, CheckCircle, Download, ArrowLeft } from "lucide-react";
 import type { Tables } from '@/integrations/supabase/types';
 
 type Session = Tables<'sessions'>;
@@ -36,28 +36,7 @@ const SessionViewPage = () => {
       try {
         if (!courseId || !sessionId || !profile) return;
 
-        // Fetch session details
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('id', sessionId)
-          .eq('course_id', courseId)
-          .single();
-
-        if (sessionError) throw sessionError;
-        setSession(sessionData);
-
-        // Fetch course details
-        const { data: courseData, error: courseError } = await supabase
-          .from('courses')
-          .select('*')
-          .eq('id', courseId)
-          .single();
-
-        if (courseError) throw courseError;
-        setCourse(courseData);
-
-        // Check if student is enrolled
+        // Check if student is enrolled first
         const { data: enrollmentData, error: enrollmentError } = await supabase
           .from('student_courses')
           .select('*')
@@ -74,6 +53,39 @@ const SessionViewPage = () => {
           navigate('/dashboard');
           return;
         }
+
+        // Fetch session details
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .eq('course_id', courseId)
+          .single();
+
+        if (sessionError) throw sessionError;
+        
+        // Check if session has video content and is visible to students
+        if (!sessionData.video_url) {
+          toast({
+            title: "Session Not Available",
+            description: "This session doesn't have video content available.",
+            variant: "destructive",
+          });
+          navigate(`/courses/${courseId}`);
+          return;
+        }
+
+        setSession(sessionData);
+
+        // Fetch course details
+        const { data: courseData, error: courseError } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('id', courseId)
+          .single();
+
+        if (courseError) throw courseError;
+        setCourse(courseData);
 
         // Fetch student session progress
         const { data: studentSessionData, error: studentSessionError } = await supabase
@@ -127,10 +139,9 @@ const SessionViewPage = () => {
 
     setCompleting(true);
     try {
-      const points = 10; // Points awarded for completing a session
+      const points = 10;
 
       if (studentSession) {
-        // Update existing student session
         const { error } = await supabase
           .from('student_sessions')
           .update({
@@ -142,7 +153,6 @@ const SessionViewPage = () => {
 
         if (error) throw error;
       } else {
-        // Create new student session record
         const { error } = await supabase
           .from('student_sessions')
           .insert({
@@ -156,7 +166,6 @@ const SessionViewPage = () => {
         if (error) throw error;
       }
 
-      // Update student's total points
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -166,7 +175,6 @@ const SessionViewPage = () => {
 
       if (profileError) throw profileError;
 
-      // Get current course progress and increment it
       const { data: currentCourse, error: getCourseError } = await supabase
         .from('student_courses')
         .select('progress')
@@ -176,7 +184,6 @@ const SessionViewPage = () => {
 
       if (getCourseError) throw getCourseError;
 
-      // Update course progress
       const { error: progressError } = await supabase
         .from('student_courses')
         .update({
@@ -192,7 +199,6 @@ const SessionViewPage = () => {
         description: `You earned ${points} points for completing this session.`,
       });
 
-      // Refresh student session data
       const { data: updatedStudentSession } = await supabase
         .from('student_sessions')
         .select('*')
@@ -212,6 +218,32 @@ const SessionViewPage = () => {
     } finally {
       setCompleting(false);
     }
+  };
+
+  // Helper function to get embeddable video URL
+  const getEmbeddableVideoUrl = (url: string) => {
+    if (!url) return '';
+    
+    // YouTube URL conversion
+    if (url.includes('youtube.com/watch?v=')) {
+      const videoId = url.split('v=')[1]?.split('&')[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    
+    // YouTube short URL conversion
+    if (url.includes('youtu.be/')) {
+      const videoId = url.split('youtu.be/')[1]?.split('?')[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    
+    // Vimeo URL conversion
+    if (url.includes('vimeo.com/')) {
+      const videoId = url.split('vimeo.com/')[1]?.split('?')[0];
+      return `https://player.vimeo.com/video/${videoId}`;
+    }
+    
+    // Return original URL for direct video files
+    return url;
   };
 
   if (loading) {
@@ -240,6 +272,8 @@ const SessionViewPage = () => {
   }
 
   const isCompleted = studentSession?.completed || false;
+  const embeddableUrl = getEmbeddableVideoUrl(session.video_url || '');
+  const isDirectVideo = session.video_url && (session.video_url.endsWith('.mp4') || session.video_url.endsWith('.webm') || session.video_url.endsWith('.ogg'));
 
   return (
     <DashboardLayout>
@@ -285,26 +319,38 @@ const SessionViewPage = () => {
                 {session.video_url ? (
                   <div className="space-y-4">
                     <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                      <video
-                        ref={videoRef}
-                        src={session.video_url}
-                        controls
-                        className="w-full h-full"
-                        onTimeUpdate={handleTimeUpdate}
-                        onLoadedMetadata={handleLoadedMetadata}
-                        preload="metadata"
-                      >
-                        Your browser does not support the video tag.
-                      </video>
+                      {isDirectVideo ? (
+                        <video
+                          ref={videoRef}
+                          src={session.video_url}
+                          controls
+                          className="w-full h-full"
+                          onTimeUpdate={handleTimeUpdate}
+                          onLoadedMetadata={handleLoadedMetadata}
+                          preload="metadata"
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <iframe
+                          src={embeddableUrl}
+                          className="w-full h-full"
+                          allowFullScreen
+                          title={session.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        />
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Video Progress</span>
-                        <span>{Math.round(videoProgress)}%</span>
+                    {isDirectVideo && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Video Progress</span>
+                          <span>{Math.round(videoProgress)}%</span>
+                        </div>
+                        <Progress value={videoProgress} />
                       </div>
-                      <Progress value={videoProgress} />
-                    </div>
-                    {!isCompleted && videoProgress >= 90 && (
+                    )}
+                    {!isCompleted && ((isDirectVideo && videoProgress >= 90) || !isDirectVideo) && (
                       <Button 
                         onClick={handleCompleteSession}
                         disabled={completing}

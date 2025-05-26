@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Save, Eye, EyeOff } from "lucide-react";
@@ -53,6 +52,9 @@ const AdminSessionPage = () => {
           video_url: sessionData.video_url || '',
           material_url: sessionData.material_url || ''
         });
+        
+        // Set visibility based on whether session has video content
+        setIsVisible(Boolean(sessionData.video_url));
 
         // Fetch course details
         const { data: courseData, error: courseError } = await supabase
@@ -95,11 +97,12 @@ const AdminSessionPage = () => {
 
       if (error) throw error;
 
-      // Update course total_sessions count
+      // Update course total_sessions count based on sessions with video content
       const { data: sessionsCount, error: countError } = await supabase
         .from('sessions')
         .select('id', { count: 'exact' })
-        .eq('course_id', courseId);
+        .eq('course_id', courseId)
+        .not('video_url', 'is', null);
 
       if (countError) throw countError;
 
@@ -124,6 +127,7 @@ const AdminSessionPage = () => {
 
       if (updatedSession) {
         setSession(updatedSession);
+        setIsVisible(Boolean(updatedSession.video_url));
       }
 
     } catch (error) {
@@ -178,14 +182,12 @@ const AdminSessionPage = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center space-x-2">
               {isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              <Switch
-                id="visibility"
-                checked={isVisible}
-                onCheckedChange={setIsVisible}
-              />
               <Label htmlFor="visibility">
                 {isVisible ? 'Visible to Students' : 'Hidden from Students'}
               </Label>
+              <p className="text-sm text-muted-foreground">
+                (Session is {editForm.video_url ? 'visible' : 'hidden'} based on video content)
+              </p>
             </div>
             <Button 
               onClick={() => navigate(`/admin/courses/${courseId}`)} 
@@ -218,9 +220,15 @@ const AdminSessionPage = () => {
                 <Input
                   id="video_url"
                   value={editForm.video_url}
-                  onChange={(e) => setEditForm({...editForm, video_url: e.target.value})}
-                  placeholder="Enter video URL (YouTube, Vimeo, etc.)"
+                  onChange={(e) => {
+                    setEditForm({...editForm, video_url: e.target.value});
+                    setIsVisible(Boolean(e.target.value.trim()));
+                  }}
+                  placeholder="Enter video URL (YouTube, Vimeo, direct video file)"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Session will only be visible to students if video URL is provided
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -268,12 +276,40 @@ const AdminSessionPage = () => {
                 <div className="space-y-2">
                   <Label>Video Preview</Label>
                   <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                    <iframe
-                      src={editForm.video_url}
-                      className="w-full h-full rounded-lg"
-                      allowFullScreen
-                      title={editForm.title}
-                    />
+                    {editForm.video_url.includes('youtube.com') || editForm.video_url.includes('youtu.be') ? (
+                      <div className="text-center p-4">
+                        <p className="text-sm text-gray-600 mb-2">YouTube Video</p>
+                        <a 
+                          href={editForm.video_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          View on YouTube
+                        </a>
+                      </div>
+                    ) : editForm.video_url.includes('vimeo.com') ? (
+                      <div className="text-center p-4">
+                        <p className="text-sm text-gray-600 mb-2">Vimeo Video</p>
+                        <a 
+                          href={editForm.video_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          View on Vimeo
+                        </a>
+                      </div>
+                    ) : (
+                      <video
+                        src={editForm.video_url}
+                        controls
+                        className="w-full h-full rounded-lg"
+                        preload="metadata"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
                   </div>
                 </div>
               )}
@@ -293,6 +329,11 @@ const AdminSessionPage = () => {
                 <p className="text-sm text-blue-800">
                   <strong>Status:</strong> {isVisible ? 'Visible to students' : 'Hidden from students'}
                 </p>
+                {!editForm.video_url && (
+                  <p className="text-sm text-orange-600 mt-1">
+                    Add a video URL to make this session visible to students
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
