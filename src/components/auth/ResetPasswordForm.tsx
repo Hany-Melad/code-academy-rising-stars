@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { resetSchema, ResetFormValues, FormMode } from "./types";
+import { useNavigate } from "react-router-dom";
 
 interface ResetPasswordFormProps {
   onModeChange: (mode: FormMode) => void;
@@ -13,6 +14,7 @@ interface ResetPasswordFormProps {
 
 export function ResetPasswordForm({ onModeChange }: ResetPasswordFormProps) {
   const { resetPassword } = useAuth();
+  const navigate = useNavigate();
   
   const form = useForm<ResetFormValues>({
     resolver: zodResolver(resetSchema),
@@ -22,15 +24,18 @@ export function ResetPasswordForm({ onModeChange }: ResetPasswordFormProps) {
   });
 
   const handleReset = async (data: ResetFormValues) => {
-    await resetPassword(data.email);
-    onModeChange("login");
+    const { error } = await resetPassword(data.email);
+    if (!error) {
+      // Route to verification page with email as state
+      navigate("/auth/verify-reset", { state: { email: data.email } });
+    }
   };
 
   return (
     <>
       <div className="mb-8 text-center">
         <h2 className="text-2xl font-bold text-gray-900">Reset Password</h2>
-        <p className="text-sm text-gray-600 mt-2">We'll send you a link to reset your password</p>
+        <p className="text-sm text-gray-600 mt-2">We'll send you a verification code to reset your password</p>
       </div>
       
       <Form {...form}>
@@ -51,7 +56,7 @@ export function ResetPasswordForm({ onModeChange }: ResetPasswordFormProps) {
           
           <div className="pt-2">
             <Button type="submit" className="w-full">
-              Send Reset Link
+              Send Verification Code
             </Button>
           </div>
         </form>

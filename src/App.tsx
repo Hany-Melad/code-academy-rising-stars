@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 // Pages
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
+import VerifyResetPage from "./pages/VerifyResetPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import CourseDetailPage from "./pages/admin/CourseDetailPage";
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/verify-reset" element={<VerifyResetPage />} />
             <Route path="/courses" element={<CoursesPage />} />
             
             {/* Protected student routes */}
