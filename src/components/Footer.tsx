@@ -44,10 +44,10 @@ export function Footer() {
               Contact Us
             </h3>
             <address className="not-italic text-sm text-gray-600 space-y-2">
-              <p>123 Coding Street</p>
-              <p>San Francisco, CA 94103</p>
-              <p>Email: info@upsjunior.code</p>
-              <p>Phone: (123) 456-7890</p>
+              <p>8 Branches and online</p>
+              <p>Minia Egypt</p>
+              <p>Email: upsjunior24@gmail.com</p>
+              <p>Phone: (+20) 1204262410</p>
             </address>
           </div>
         </div>

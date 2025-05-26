@@ -21,6 +21,8 @@ import NotFound from "./pages/NotFound";
 import SessionViewPage from "./pages/SessionViewPage";
 import AdminSessionPage from "./pages/admin/AdminSessionPage";
 import CourseDetailStudentPage from "./pages/CourseDetailStudentPage";
+import About from './pages/About'; // تأكد من مسار الملف حسب مشروعك
+
 
 const queryClient = new QueryClient();
 
@@ -36,6 +38,9 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/verify-reset" element={<VerifyResetPage />} />
             <Route path="/courses" element={<CoursesPage />} />
+
+            <Route path="/about" element={<About />} />
+
             
             {/* Protected student routes */}
             <Route element={<ProtectedRoute requiredRole="student" />}>

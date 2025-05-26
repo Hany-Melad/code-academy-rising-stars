@@ -57,7 +57,7 @@ const Index = () => {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-academy-blue to-academy-orange opacity-20 blur-2xl rounded-full transform translate-x-10"></div>
               <img 
-                src="https://images.unsplash.com/photo-1587620962725-abab7fe55159?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1031&q=80" 
+                src="https://i.postimg.cc/VNy5F8Dk/ezgif-com-animated-gif-maker-7.gif"
                 alt="Coding" 
                 className="relative rounded-lg shadow-xl object-cover w-full h-[400px]"
               />
@@ -102,12 +102,21 @@ const Index = () => {
                 <p className="mt-4 text-lg text-gray-600">
                   Join UPS Junior Coding Academy today and take the first step towards becoming a coding expert.
                 </p>
-                <div className="mt-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="mt-8" >
                   <Button asChild size="lg" className="bg-academy-orange hover:bg-orange-600">
                     <Link to="/auth" className="flex items-center gap-2">
-                      Get Started <ArrowRight className="h-4 w-4" />
+                      Go to courses <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
+                </div>
+                <div className="mt-8">
+                  <Button asChild size="lg" className="bg-academy-blue hover:bg-blue-600">
+                    <Link to="https://ups-junior.github.io/Site/" className="flex items-center gap-2">
+                      Learn More <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
                 </div>
               </div>
               <div className="hidden lg:block relative">

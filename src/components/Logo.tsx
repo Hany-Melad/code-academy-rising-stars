@@ -7,36 +7,15 @@ interface LogoProps {
   showText?: boolean;
 }
 
-export function Logo({ className, size = 'medium', showText = true }: LogoProps) {
-  const sizeClasses = {
-    small: 'h-6',
-    medium: 'h-8',
-    large: 'h-12'
-  };
-
+export function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center", className)}>
-      <div className="relative">
-        <div className="absolute -inset-1 bg-gradient-to-r from-academy-orange to-academy-blue opacity-75 rounded-full blur"></div>
-        <div className={cn("flex items-center justify-center bg-white text-academy-blue font-bold rounded-full relative", sizeClasses[size])}>
-          <span className={cn("text-academy-blue px-3", {
-            "text-sm": size === 'small',
-            "text-base": size === 'medium',
-            "text-lg": size === 'large',
-          })}>UPS</span>
-        </div>
-      </div>
-      
-      {showText && (
-        <div className="ml-2 font-bold flex flex-col">
-          <span className="text-academy-orange">Junior</span>
-          <span className={cn("text-academy-blue leading-none", {
-            "text-xs": size === 'small',
-            "text-sm": size === 'medium',
-            "text-base": size === 'large',
-          })}>Coding Academy</span>
-        </div>
+    <img
+      src="https://i.postimg.cc/G2nz8KtS/logo-2.png"
+      alt="UPS"
+      className={cn(
+        "object-contain object-left h-[30px] align-middle max-w-full inline-block",
+        className
       )}
-    </div>
+    />
   );
 }
