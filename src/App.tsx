@@ -19,6 +19,7 @@ import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import SessionViewPage from "./pages/SessionViewPage";
 import AdminSessionPage from "./pages/admin/AdminSessionPage";
+import CourseDetailStudentPage from "./pages/CourseDetailStudentPage";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/dashboard" element={<StudentDashboard />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/courses/:courseId" element={<CourseDetailStudentPage />} />
               <Route path="/courses/:courseId/sessions/:sessionId" element={<SessionViewPage />} />
             </Route>
             

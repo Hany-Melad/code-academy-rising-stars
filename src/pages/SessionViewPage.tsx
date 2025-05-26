@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, PlayCircle, CheckCircle, ExternalLink } from "lucide-react";
+import { Loader2, PlayCircle, CheckCircle, ExternalLink, Download, ArrowLeft } from "lucide-react";
 import type { Tables } from '@/integrations/supabase/types';
 
 type Session = Tables<'sessions'>;
@@ -20,12 +21,15 @@ const SessionViewPage = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
   
   const [session, setSession] = useState<Session | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [studentSession, setStudentSession] = useState<StudentSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
 
   useEffect(() => {
     const fetchSessionData = async () => {
@@ -99,6 +103,24 @@ const SessionViewPage = () => {
 
     fetchSessionData();
   }, [courseId, sessionId, profile, navigate, toast]);
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+      setVideoProgress(progress);
+      
+      // Auto-complete when video reaches 90%
+      if (progress >= 90 && !studentSession?.completed && !completing) {
+        handleCompleteSession();
+      }
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setVideoDuration(videoRef.current.duration);
+    }
+  };
 
   const handleCompleteSession = async () => {
     if (!profile || !session || completing) return;
@@ -223,11 +245,21 @@ const SessionViewPage = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold mb-1">{session.title}</h1>
-            <p className="text-muted-foreground">
-              {course.title} - Session {session.order_number}
-            </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/courses/${courseId}`)}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Course
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold mb-1">{session.title}</h1>
+              <p className="text-muted-foreground">
+                {course.title} - Session {session.order_number}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             {isCompleted && (
@@ -236,9 +268,6 @@ const SessionViewPage = () => {
                 Completed
               </Badge>
             )}
-            <Button onClick={() => navigate('/dashboard')} variant="outline">
-              Back to Dashboard
-            </Button>
           </div>
         </div>
 
@@ -255,15 +284,27 @@ const SessionViewPage = () => {
               <CardContent>
                 {session.video_url ? (
                   <div className="space-y-4">
-                    <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                      <iframe
+                    <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                      <video
+                        ref={videoRef}
                         src={session.video_url}
-                        className="w-full h-full rounded-lg"
-                        allowFullScreen
-                        title={session.title}
-                      />
+                        controls
+                        className="w-full h-full"
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        preload="metadata"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
                     </div>
-                    {!isCompleted && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Video Progress</span>
+                        <span>{Math.round(videoProgress)}%</span>
+                      </div>
+                      <Progress value={videoProgress} />
+                    </div>
+                    {!isCompleted && videoProgress >= 90 && (
                       <Button 
                         onClick={handleCompleteSession}
                         disabled={completing}
@@ -303,9 +344,9 @@ const SessionViewPage = () => {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Session Progress</span>
-                    <span>{isCompleted ? '100%' : '0%'}</span>
+                    <span>{isCompleted ? '100%' : Math.round(videoProgress)}%</span>
                   </div>
-                  <Progress value={isCompleted ? 100 : 0} />
+                  <Progress value={isCompleted ? 100 : videoProgress} />
                 </div>
                 {studentSession?.earned_points && (
                   <div className="text-center p-3 bg-yellow-50 rounded-lg">
@@ -325,9 +366,9 @@ const SessionViewPage = () => {
                 </CardHeader>
                 <CardContent>
                   <Button asChild variant="outline" className="w-full">
-                    <a href={session.material_url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      View Materials
+                    <a href={session.material_url} target="_blank" rel="noopener noreferrer" download>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Materials
                     </a>
                   </Button>
                 </CardContent>
