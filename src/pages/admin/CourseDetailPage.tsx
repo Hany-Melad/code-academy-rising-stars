@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -159,8 +158,21 @@ const CourseDetailPage = () => {
       
       console.log("Session created successfully:", data);
       
+      // Ensure the data has all required properties by casting to Session type
+      const newSession: Session = {
+        id: data.id,
+        course_id: data.course_id,
+        title: data.title,
+        order_number: data.order_number,
+        video_url: data.video_url,
+        material_url: data.material_url,
+        created_at: data.created_at,
+        visible: data.visible ?? true,
+        locked: data.locked ?? false,
+      };
+      
       // Update sessions list
-      setSessions([...sessions, data]);
+      setSessions([...sessions, newSession]);
       
       // Update course total_sessions count
       const newTotalSessions = sessions.length + 1;
