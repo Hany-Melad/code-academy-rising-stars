@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -158,7 +159,7 @@ const CourseDetailPage = () => {
       
       console.log("Session created successfully:", data);
       
-      // Create the session object with all required properties
+      // Create the session object with proper typing
       const newSession: Session = {
         id: data.id,
         course_id: data.course_id,
@@ -167,8 +168,8 @@ const CourseDetailPage = () => {
         video_url: data.video_url,
         material_url: data.material_url,
         created_at: data.created_at,
-        visible: true, // Ensure this is set
-        locked: false, // Ensure this is set
+        visible: data.visible,
+        locked: data.locked,
       };
       
       // Update sessions list
