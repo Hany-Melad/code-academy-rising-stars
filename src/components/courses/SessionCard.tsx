@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Lock, Video, Eye } from "lucide-react";
+import { CheckCircle, Lock, Video, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import type { Tables } from '@/integrations/supabase/types';
@@ -31,30 +31,49 @@ export function SessionCard({
   const hasVideo = Boolean(session.video_url);
   const hasMaterials = Boolean(session.material_url);
 
-  // For students, session is only accessible if it has video content
+  // For students, session is accessible if it's visible, not locked, and has video content
   // For admins, they can always access sessions
-  const canAccess = isAdmin || hasVideo;
-  const showAsVisible = isAdmin ? hasVideo : isVisible && hasVideo;
+  const sessionVisible = session.visible !== undefined ? session.visible : true;
+  const sessionLocked = session.locked !== undefined ? session.locked : false;
+  
+  const canAccess = isAdmin || (sessionVisible && !sessionLocked && hasVideo);
+  const showAsAccessible = isAdmin || (sessionVisible && !sessionLocked && hasVideo);
 
   return (
     <Card className={cn("overflow-hidden transition-all", {
-      "hover:shadow-md": canAccess && !isLocked,
-      "opacity-75": isLocked || (!isAdmin && !hasVideo),
+      "hover:shadow-md": canAccess,
+      "opacity-75": !canAccess,
     })}>
       <CardHeader className={cn("pb-2", {
         "bg-green-50": isCompleted,
-        "bg-academy-lightBlue": canAccess && !isCompleted && showAsVisible,
-        "bg-gray-100": isLocked || (!isAdmin && !hasVideo) || (!isAdmin && !showAsVisible),
+        "bg-academy-lightBlue": canAccess && !isCompleted && showAsAccessible,
+        "bg-gray-100": !canAccess,
       })}>
         <div className="flex justify-between items-start">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">Session {session.order_number}</CardTitle>
-              {isAdmin && !hasVideo && (
-                <Badge variant="outline" className="text-xs">
-                  <Eye className="h-3 w-3 mr-1" />
-                  No Video
-                </Badge>
+              {isAdmin && (
+                <div className="flex gap-1">
+                  {!sessionVisible && (
+                    <Badge variant="outline" className="text-xs">
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Hidden
+                    </Badge>
+                  )}
+                  {sessionLocked && (
+                    <Badge variant="destructive" className="text-xs">
+                      <Lock className="h-3 w-3 mr-1" />
+                      Locked
+                    </Badge>
+                  )}
+                  {!hasVideo && (
+                    <Badge variant="outline" className="text-xs">
+                      <Eye className="h-3 w-3 mr-1" />
+                      No Video
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
             <CardDescription>
@@ -66,7 +85,7 @@ export function SessionCard({
               Completed
             </Badge>
           ) : (
-            (isLocked || (!isAdmin && !canAccess)) && (
+            !canAccess && (
               <Lock className="h-4 w-4 text-gray-400" />
             )
           )}
@@ -99,15 +118,17 @@ export function SessionCard({
           size="sm"
           className={cn({
             "bg-academy-blue hover:bg-blue-600": isCompleted,
-            "bg-academy-orange hover:bg-orange-600": canAccess && !isCompleted && showAsVisible,
-            "bg-gray-300 cursor-not-allowed": !canAccess || isLocked || (!isAdmin && !showAsVisible),
+            "bg-academy-orange hover:bg-orange-600": canAccess && !isCompleted && showAsAccessible,
+            "bg-gray-300 cursor-not-allowed": !canAccess,
           })}
-          disabled={!canAccess || isLocked || (!isAdmin && !showAsVisible)}
-          asChild={canAccess && !isLocked && (isAdmin || showAsVisible)}
+          disabled={!canAccess}
+          asChild={canAccess}
         >
-          {!canAccess || isLocked || (!isAdmin && !showAsVisible) ? (
+          {!canAccess ? (
             <span>
-              {isLocked ? "Locked" : !hasVideo ? "No Content" : "Not Available"}
+              {!sessionVisible ? "Hidden" : 
+               sessionLocked ? "Locked" : 
+               !hasVideo ? "No Content" : "Not Available"}
             </span>
           ) : (
             <Link to={isAdmin ? `/admin/courses/${courseId}/sessions/${session.id}` : `/courses/${courseId}/sessions/${session.id}`}>

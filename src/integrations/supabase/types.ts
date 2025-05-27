@@ -100,6 +100,7 @@ export type Database = {
           is_correct: boolean
           quiz_id: string
           student_id: string
+          written_answer: string | null
         }
         Insert: {
           answered_at?: string | null
@@ -107,6 +108,7 @@ export type Database = {
           is_correct: boolean
           quiz_id: string
           student_id: string
+          written_answer?: string | null
         }
         Update: {
           answered_at?: string | null
@@ -114,6 +116,7 @@ export type Database = {
           is_correct?: boolean
           quiz_id?: string
           student_id?: string
+          written_answer?: string | null
         }
         Relationships: [
           {
@@ -138,7 +141,9 @@ export type Database = {
           created_at: string
           id: string
           options: Json
+          points: number
           question: string
+          question_type: string
           session_id: string
         }
         Insert: {
@@ -146,7 +151,9 @@ export type Database = {
           created_at?: string
           id?: string
           options: Json
+          points?: number
           question: string
+          question_type?: string
           session_id: string
         }
         Update: {
@@ -154,7 +161,9 @@ export type Database = {
           created_at?: string
           id?: string
           options?: Json
+          points?: number
           question?: string
+          question_type?: string
           session_id?: string
         }
         Relationships: [
@@ -172,28 +181,34 @@ export type Database = {
           course_id: string
           created_at: string
           id: string
+          locked: boolean
           material_url: string | null
           order_number: number
           title: string
           video_url: string | null
+          visible: boolean
         }
         Insert: {
           course_id: string
           created_at?: string
           id?: string
+          locked?: boolean
           material_url?: string | null
           order_number: number
           title: string
           video_url?: string | null
+          visible?: boolean
         }
         Update: {
           course_id?: string
           created_at?: string
           id?: string
+          locked?: boolean
           material_url?: string | null
           order_number?: number
           title?: string
           video_url?: string | null
+          visible?: boolean
         }
         Relationships: [
           {
@@ -343,7 +358,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_student_access_session: {
+        Args: { session_id: string; student_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

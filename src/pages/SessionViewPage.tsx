@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -6,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QuizViewer } from "@/components/quizzes/QuizViewer";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
@@ -64,11 +65,12 @@ const SessionViewPage = () => {
 
         if (sessionError) throw sessionError;
         
-        // Check if session has video content and is visible to students
-        if (!sessionData.video_url) {
+        // Check if session is accessible to students
+        const isAccessible = sessionData.visible && !sessionData.locked && sessionData.video_url;
+        if (!isAccessible) {
           toast({
             title: "Session Not Available",
-            description: "This session doesn't have video content available.",
+            description: "This session is not currently available.",
             variant: "destructive",
           });
           navigate(`/courses/${courseId}`);
@@ -306,77 +308,90 @@ const SessionViewPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Video Section */}
+          {/* Main Content */}
           <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PlayCircle className="w-5 h-5" />
-                  Video Lesson
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {session.video_url ? (
-                  <div className="space-y-4">
-                    <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                      {isDirectVideo ? (
-                        <video
-                          ref={videoRef}
-                          src={session.video_url}
-                          controls
-                          className="w-full h-full"
-                          onTimeUpdate={handleTimeUpdate}
-                          onLoadedMetadata={handleLoadedMetadata}
-                          preload="metadata"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      ) : (
-                        <iframe
-                          src={embeddableUrl}
-                          className="w-full h-full"
-                          allowFullScreen
-                          title={session.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        />
-                      )}
-                    </div>
-                    {isDirectVideo && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Video Progress</span>
-                          <span>{Math.round(videoProgress)}%</span>
+            <Tabs defaultValue="video" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="video">Video Lesson</TabsTrigger>
+                <TabsTrigger value="quiz">Quiz</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="video">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PlayCircle className="w-5 h-5" />
+                      Video Lesson
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {session.video_url ? (
+                      <div className="space-y-4">
+                        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                          {isDirectVideo ? (
+                            <video
+                              ref={videoRef}
+                              src={session.video_url}
+                              controls
+                              className="w-full h-full"
+                              onTimeUpdate={handleTimeUpdate}
+                              onLoadedMetadata={handleLoadedMetadata}
+                              preload="metadata"
+                            >
+                              Your browser does not support the video tag.
+                            </video>
+                          ) : (
+                            <iframe
+                              src={embeddableUrl}
+                              className="w-full h-full"
+                              allowFullScreen
+                              title={session.title}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            />
+                          )}
                         </div>
-                        <Progress value={videoProgress} />
+                        {isDirectVideo && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Video Progress</span>
+                              <span>{Math.round(videoProgress)}%</span>
+                            </div>
+                            <Progress value={videoProgress} />
+                          </div>
+                        )}
+                        {!isCompleted && ((isDirectVideo && videoProgress >= 90) || !isDirectVideo) && (
+                          <Button 
+                            onClick={handleCompleteSession}
+                            disabled={completing}
+                            className="w-full"
+                          >
+                            {completing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Marking as Complete...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Mark as Complete
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                        <p className="text-gray-500">No video available for this session</p>
                       </div>
                     )}
-                    {!isCompleted && ((isDirectVideo && videoProgress >= 90) || !isDirectVideo) && (
-                      <Button 
-                        onClick={handleCompleteSession}
-                        disabled={completing}
-                        className="w-full"
-                      >
-                        {completing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Marking as Complete...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Mark as Complete
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-500">No video available for this session</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="quiz">
+                <QuizViewer sessionId={sessionId!} />
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Sidebar */}
