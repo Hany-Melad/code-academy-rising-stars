@@ -148,7 +148,7 @@ const CourseDetailPage = () => {
           visible: true,
           locked: false,
         })
-        .select('id, course_id, title, order_number, video_url, material_url, created_at, visible, locked')
+        .select('*')
         .single();
       
       if (error) {
@@ -158,8 +158,18 @@ const CourseDetailPage = () => {
       
       console.log("Session created successfully:", data);
       
-      // Now data should have all required Session properties
-      const newSession: Session = data;
+      // Create the session object with all required properties
+      const newSession: Session = {
+        id: data.id,
+        course_id: data.course_id,
+        title: data.title,
+        order_number: data.order_number,
+        video_url: data.video_url,
+        material_url: data.material_url,
+        created_at: data.created_at,
+        visible: true, // Ensure this is set
+        locked: false, // Ensure this is set
+      };
       
       // Update sessions list
       setSessions([...sessions, newSession]);
