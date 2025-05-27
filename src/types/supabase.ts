@@ -79,6 +79,8 @@ export interface Database {
           order_number: number
           video_url: string | null
           material_url: string | null
+          visible: boolean
+          locked: boolean
           created_at: string
         }
         Insert: {
@@ -88,6 +90,8 @@ export interface Database {
           order_number: number
           video_url?: string | null
           material_url?: string | null
+          visible?: boolean
+          locked?: boolean
           created_at?: string
         }
         Update: {
@@ -97,6 +101,8 @@ export interface Database {
           order_number?: number
           video_url?: string | null
           material_url?: string | null
+          visible?: boolean
+          locked?: boolean
           created_at?: string
         }
       }
