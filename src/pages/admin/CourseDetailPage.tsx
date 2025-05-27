@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -148,7 +149,7 @@ const CourseDetailPage = () => {
           visible: true,
           locked: false,
         })
-        .select('id, course_id, title, order_number, video_url, material_url, created_at, visible, locked')
+        .select('*')
         .single();
       
       if (error) {
