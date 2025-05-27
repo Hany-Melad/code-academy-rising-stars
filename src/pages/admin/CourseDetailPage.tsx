@@ -149,7 +149,7 @@ const CourseDetailPage = () => {
           visible: true,
           locked: false,
         })
-        .select()
+        .select('*')
         .single();
       
       if (error) {
