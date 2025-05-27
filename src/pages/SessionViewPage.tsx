@@ -37,15 +37,23 @@ const SessionViewPage = () => {
       try {
         if (!courseId || !sessionId || !profile) return;
 
-        // Check if student is enrolled first
+        console.log('Verifying access to session:', { sessionId, courseId, studentId: profile.id });
+
+        // First, verify the student is enrolled in the course
         const { data: enrollmentData, error: enrollmentError } = await supabase
           .from('student_courses')
           .select('*')
           .eq('student_id', profile.id)
           .eq('course_id', courseId)
-          .single();
+          .maybeSingle();
 
         if (enrollmentError) {
+          console.error('Enrollment verification error:', enrollmentError);
+          throw enrollmentError;
+        }
+
+        if (!enrollmentData) {
+          console.log('Student not enrolled in course');
           toast({
             title: "Access Denied",
             description: "You are not enrolled in this course.",
@@ -55,6 +63,8 @@ const SessionViewPage = () => {
           return;
         }
 
+        console.log('Student enrollment verified');
+
         // Fetch session details
         const { data: sessionData, error: sessionError } = await supabase
           .from('sessions')
@@ -63,11 +73,15 @@ const SessionViewPage = () => {
           .eq('course_id', courseId)
           .single();
 
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          console.error('Session fetch error:', sessionError);
+          throw sessionError;
+        }
         
         // Check if session is accessible to students
         const isAccessible = sessionData.visible && !sessionData.locked && sessionData.video_url;
         if (!isAccessible) {
+          console.log('Session not accessible:', { visible: sessionData.visible, locked: sessionData.locked, hasVideo: !!sessionData.video_url });
           toast({
             title: "Session Not Available",
             description: "This session is not currently available.",
@@ -86,7 +100,10 @@ const SessionViewPage = () => {
           .eq('id', courseId)
           .single();
 
-        if (courseError) throw courseError;
+        if (courseError) {
+          console.error('Course fetch error:', courseError);
+          throw courseError;
+        }
         setCourse(courseData);
 
         // Fetch student session progress
@@ -98,9 +115,11 @@ const SessionViewPage = () => {
           .maybeSingle();
 
         if (studentSessionError && studentSessionError.code !== 'PGRST116') {
+          console.error('Student session fetch error:', studentSessionError);
           throw studentSessionError;
         }
 
+        console.log('Student session data:', studentSessionData);
         setStudentSession(studentSessionData);
 
       } catch (error) {
@@ -110,6 +129,7 @@ const SessionViewPage = () => {
           description: "Failed to load session data.",
           variant: "destructive",
         });
+        navigate('/dashboard');
       } finally {
         setLoading(false);
       }

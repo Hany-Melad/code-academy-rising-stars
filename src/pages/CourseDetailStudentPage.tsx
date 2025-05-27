@@ -35,15 +35,25 @@ const CourseDetailStudentPage = () => {
       try {
         if (!courseId || !profile) return;
 
-        // Check enrollment first
+        console.log('Checking enrollment for student:', profile.id, 'in course:', courseId);
+
+        // Check enrollment first - this is critical for security
         const { data: enrollmentData, error: enrollmentError } = await supabase
           .from('student_courses')
           .select('*')
           .eq('student_id', profile.id)
           .eq('course_id', courseId)
-          .single();
+          .maybeSingle();
 
         if (enrollmentError) {
+          console.error('Enrollment check error:', enrollmentError);
+          throw enrollmentError;
+        }
+
+        console.log('Enrollment data:', enrollmentData);
+
+        if (!enrollmentData) {
+          console.log('Student not enrolled in course');
           toast({
             title: "Access Denied",
             description: "You are not enrolled in this course.",
@@ -62,7 +72,10 @@ const CourseDetailStudentPage = () => {
           .eq('id', courseId)
           .single();
 
-        if (courseError) throw courseError;
+        if (courseError) {
+          console.error('Course fetch error:', courseError);
+          throw courseError;
+        }
         setCourse(courseData);
 
         // Fetch sessions
@@ -72,16 +85,24 @@ const CourseDetailStudentPage = () => {
           .eq('course_id', courseId)
           .order('order_number');
 
-        if (sessionsError) throw sessionsError;
+        if (sessionsError) {
+          console.error('Sessions fetch error:', sessionsError);
+          throw sessionsError;
+        }
         setSessions(sessionsData || []);
 
-        // Fetch student session progress
+        // Fetch student session progress - only for sessions where student has progress
         const { data: studentSessionsData, error: studentSessionsError } = await supabase
           .from('student_sessions')
           .select('*')
           .eq('student_id', profile.id);
 
-        if (studentSessionsError) throw studentSessionsError;
+        if (studentSessionsError) {
+          console.error('Student sessions fetch error:', studentSessionsError);
+          throw studentSessionsError;
+        }
+        
+        console.log('Student sessions data:', studentSessionsData);
         setStudentSessions(studentSessionsData || []);
 
       } catch (error) {
@@ -91,6 +112,7 @@ const CourseDetailStudentPage = () => {
           description: "Failed to load course data.",
           variant: "destructive",
         });
+        navigate('/dashboard');
       } finally {
         setLoading(false);
       }
@@ -179,10 +201,16 @@ const CourseDetailStudentPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sessions.map((session, index) => {
                 const studentSession = studentSessions.find(ss => ss.session_id === session.id);
+                
+                // A session is locked if:
+                // 1. It's not the first session AND
+                // 2. The previous session is not completed by this student
                 const isLocked = index > 0 && !studentSessions.find(ss => 
                   ss.session_id === sessions[index - 1].id && ss.completed
                 );
-                const isVisible = Boolean(session.video_url);
+                
+                // Session is visible if it has video content and is marked as visible
+                const isVisible = Boolean(session.video_url && session.visible);
                 
                 return (
                   <SessionCard

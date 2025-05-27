@@ -26,25 +26,64 @@ export const StudentsTab = ({
 
   const removeStudent = async (studentId: string) => {
     try {
-      const { error } = await supabase
+      console.log('Removing student from course:', { studentId, courseId });
+      
+      // First, get all sessions for this course
+      const { data: courseSessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('course_id', courseId);
+      
+      if (sessionsError) {
+        console.error('Error fetching course sessions:', sessionsError);
+        throw sessionsError;
+      }
+      
+      console.log('Course sessions found:', courseSessions);
+      
+      // Delete student's progress for all sessions in this course
+      if (courseSessions && courseSessions.length > 0) {
+        const sessionIds = courseSessions.map(session => session.id);
+        
+        const { error: sessionProgressError } = await supabase
+          .from('student_sessions')
+          .delete()
+          .eq('student_id', studentId)
+          .in('session_id', sessionIds);
+        
+        if (sessionProgressError) {
+          console.error('Error removing student session progress:', sessionProgressError);
+          throw sessionProgressError;
+        }
+        
+        console.log('Student session progress removed for sessions:', sessionIds);
+      }
+      
+      // Then remove the enrollment record
+      const { error: enrollmentError } = await supabase
         .from('student_courses')
         .delete()
         .eq('course_id', courseId)
         .eq('student_id', studentId);
       
-      if (error) throw error;
+      if (enrollmentError) {
+        console.error('Error removing student enrollment:', enrollmentError);
+        throw enrollmentError;
+      }
+      
+      console.log('Student enrollment removed successfully');
       
       onStudentRemoved(studentId);
       
       toast({
         title: "Success",
-        description: "Student removed from course.",
+        description: "Student removed from course and their progress has been reset.",
       });
     } catch (error) {
       console.error('Error removing student:', error);
       toast({
         title: "Error",
-        description: "Failed to remove student.",
+        description: "Failed to remove student from course.",
         variant: "destructive",
       });
     }
