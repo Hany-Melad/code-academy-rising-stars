@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -145,6 +146,8 @@ const CourseDetailPage = () => {
           video_url: sessionForm.video_url.trim() || null,
           material_url: sessionForm.material_url.trim() || null,
           order_number: nextOrderNumber,
+          visible: true,
+          locked: false,
         })
         .select()
         .single();

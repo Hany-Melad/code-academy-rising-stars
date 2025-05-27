@@ -42,7 +42,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="min-h-screen flex w-full">
         <Sidebar>
           <SidebarHeader className="flex items-center justify-center py-6">
-            <Logo size="small" />
+            <Logo />
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
