@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -90,10 +89,12 @@ const StudentDashboard = () => {
               assigned_at: data.assigned_at,
               assigned_by: data.assigned_by,
               completed_at: data.completed_at,
+              hide_new_sessions: data.hide_new_sessions || false,
             } as StudentCourse
           }));
         
         setCourses(formattedCourses);
+        
         
         // Calculate stats
         setStats({
@@ -146,6 +147,7 @@ const StudentDashboard = () => {
     
     fetchDashboardData();
   }, [profile, user, authLoading, dataFetched, toast]);
+  
   
   // Prepare progress graph data
   const progressData = courses.map(({ course, studentCourse }) => ({
