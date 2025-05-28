@@ -23,9 +23,11 @@ export const StudentsTab = ({
 }: StudentsTabProps) => {
   const { toast } = useToast();
   const [showStudentDialog, setShowStudentDialog] = useState(false);
+  const [removingStudentId, setRemovingStudentId] = useState<string | null>(null);
 
   const removeStudent = async (studentId: string) => {
     try {
+      setRemovingStudentId(studentId);
       console.log('Removing student from course:', { studentId, courseId });
       
       // First, get all sessions for this course
@@ -59,7 +61,7 @@ export const StudentsTab = ({
         console.log('Student session progress removed for sessions:', sessionIds);
       }
       
-      // Then remove the enrollment record
+      // Remove the enrollment record from student_courses table
       const { error: enrollmentError } = await supabase
         .from('student_courses')
         .delete()
@@ -71,13 +73,14 @@ export const StudentsTab = ({
         throw enrollmentError;
       }
       
-      console.log('Student enrollment removed successfully');
+      console.log('Student enrollment removed successfully from student_courses table');
       
+      // Update the local state
       onStudentRemoved(studentId);
       
       toast({
         title: "Success",
-        description: "Student removed from course and their progress has been reset.",
+        description: "Student removed from course successfully.",
       });
     } catch (error) {
       console.error('Error removing student:', error);
@@ -86,6 +89,8 @@ export const StudentsTab = ({
         description: "Failed to remove student from course.",
         variant: "destructive",
       });
+    } finally {
+      setRemovingStudentId(null);
     }
   };
 
@@ -128,8 +133,10 @@ export const StudentsTab = ({
                         size="sm" 
                         className="text-red-600 hover:text-red-900 hover:bg-red-50"
                         onClick={() => removeStudent(student.id)}
+                        disabled={removingStudentId === student.id}
                       >
-                        <XCircle className="h-4 w-4 mr-1" /> Remove
+                        <XCircle className="h-4 w-4 mr-1" /> 
+                        {removingStudentId === student.id ? 'Removing...' : 'Remove'}
                       </Button>
                     </td>
                   </tr>

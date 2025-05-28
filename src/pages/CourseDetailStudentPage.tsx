@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -30,6 +29,28 @@ const CourseDetailStudentPage = () => {
   const [studentSessions, setStudentSessions] = useState<StudentSession[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const checkEnrollmentStatus = async () => {
+    if (!courseId || !profile) return false;
+
+    console.log('Re-checking enrollment status for student:', profile.id, 'in course:', courseId);
+
+    // Double-check enrollment status
+    const { data: enrollmentData, error: enrollmentError } = await supabase
+      .from('student_courses')
+      .select('*')
+      .eq('student_id', profile.id)
+      .eq('course_id', courseId)
+      .maybeSingle();
+
+    if (enrollmentError) {
+      console.error('Enrollment re-check error:', enrollmentError);
+      return false;
+    }
+
+    console.log('Current enrollment status:', enrollmentData);
+    return !!enrollmentData;
+  };
+
   useEffect(() => {
     const fetchCourseData = async () => {
       try {
@@ -38,29 +59,30 @@ const CourseDetailStudentPage = () => {
         console.log('Checking enrollment for student:', profile.id, 'in course:', courseId);
 
         // Check enrollment first - this is critical for security
+        const isEnrolled = await checkEnrollmentStatus();
+
+        if (!isEnrolled) {
+          console.log('Student not enrolled in course');
+          toast({
+            title: "Access Denied",
+            description: "You are not enrolled in this course or your enrollment has been removed.",
+            variant: "destructive",
+          });
+          navigate('/dashboard');
+          return;
+        }
+
+        // Get the enrollment record
         const { data: enrollmentData, error: enrollmentError } = await supabase
           .from('student_courses')
           .select('*')
           .eq('student_id', profile.id)
           .eq('course_id', courseId)
-          .maybeSingle();
+          .single();
 
         if (enrollmentError) {
-          console.error('Enrollment check error:', enrollmentError);
+          console.error('Enrollment fetch error:', enrollmentError);
           throw enrollmentError;
-        }
-
-        console.log('Enrollment data:', enrollmentData);
-
-        if (!enrollmentData) {
-          console.log('Student not enrolled in course');
-          toast({
-            title: "Access Denied",
-            description: "You are not enrolled in this course.",
-            variant: "destructive",
-          });
-          navigate('/dashboard');
-          return;
         }
 
         setStudentCourse(enrollmentData);
@@ -119,6 +141,24 @@ const CourseDetailStudentPage = () => {
     };
 
     fetchCourseData();
+
+    // Set up interval to periodically check enrollment status
+    const enrollmentCheckInterval = setInterval(async () => {
+      const isStillEnrolled = await checkEnrollmentStatus();
+      if (!isStillEnrolled) {
+        console.log('Student enrollment removed - redirecting to dashboard');
+        toast({
+          title: "Access Removed",
+          description: "Your access to this course has been removed.",
+          variant: "destructive",
+        });
+        navigate('/dashboard');
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => {
+      clearInterval(enrollmentCheckInterval);
+    };
   }, [courseId, profile, navigate, toast]);
 
   if (loading) {
