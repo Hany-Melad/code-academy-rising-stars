@@ -262,6 +262,7 @@ export type Database = {
           assigned_by: string | null
           completed_at: string | null
           course_id: string
+          hide_new_sessions: boolean
           id: string
           progress: number
           student_id: string
@@ -271,6 +272,7 @@ export type Database = {
           assigned_by?: string | null
           completed_at?: string | null
           course_id: string
+          hide_new_sessions?: boolean
           id?: string
           progress?: number
           student_id: string
@@ -280,6 +282,7 @@ export type Database = {
           assigned_by?: string | null
           completed_at?: string | null
           course_id?: string
+          hide_new_sessions?: boolean
           id?: string
           progress?: number
           student_id?: string
