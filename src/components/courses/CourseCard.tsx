@@ -19,6 +19,7 @@ export function CourseCard({ course, studentCourse }: CourseCardProps) {
   const totalSessions = course.total_sessions || 0;
   const progressPercentage = totalSessions > 0 ? Math.round((progress / totalSessions) * 100) : 0;
   const isCompleted = totalSessions > 0 && progress === totalSessions;
+  const isLocked = studentCourse?.hide_new_sessions || false;
   
   return (
     <Card className="overflow-hidden h-full flex flex-col">
@@ -44,15 +45,26 @@ export function CourseCard({ course, studentCourse }: CourseCardProps) {
                 Completed
               </Badge>
             )}
+            {isLocked && (
+              <Badge className="mt-2 bg-red-100 text-red-800 hover:bg-red-100">
+                Temporarily Locked
+              </Badge>
+            )}
           </div>
         )}
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-end">
-        <Button asChild>
-          <Link to={`/courses/${course.id}`}>
-            {studentCourse ? (isCompleted ? "Review Course" : "Continue Learning") : "Enroll Now"}
-          </Link>
-        </Button>
+        {isLocked ? (
+          <Button disabled variant="secondary">
+            Course Locked
+          </Button>
+        ) : (
+          <Button asChild>
+            <Link to={`/courses/${course.id}`}>
+              {studentCourse ? (isCompleted ? "Review Course" : "Continue Learning") : "Enroll Now"}
+            </Link>
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

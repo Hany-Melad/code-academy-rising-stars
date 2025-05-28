@@ -242,11 +242,26 @@ const StudentDashboard = () => {
           {courses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map(({ course, studentCourse }) => (
-                <CourseCard 
-                  key={course.id} 
-                  course={course}
-                  studentCourse={studentCourse}
-                />
+                <div key={course.id} className="relative">
+                  <CourseCard 
+                    course={course}
+                    studentCourse={studentCourse}
+                  />
+                  {studentCourse.hide_new_sessions && (
+                    <div className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                      <div className="text-center text-white p-4">
+                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <AlertCircle className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-semibold mb-2">Course Temporarily Locked</h3>
+                        <p className="text-sm text-white/80">
+                          This course has been temporarily restricted by an administrator. 
+                          Please contact your instructor for more information.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           ) : (
