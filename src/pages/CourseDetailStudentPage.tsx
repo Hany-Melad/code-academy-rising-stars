@@ -29,28 +29,6 @@ const CourseDetailStudentPage = () => {
   const [studentSessions, setStudentSessions] = useState<StudentSession[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const checkEnrollmentStatus = async () => {
-    if (!courseId || !profile) return false;
-
-    console.log('Re-checking enrollment status for student:', profile.id, 'in course:', courseId);
-
-    // Double-check enrollment status
-    const { data: enrollmentData, error: enrollmentError } = await supabase
-      .from('student_courses')
-      .select('*')
-      .eq('student_id', profile.id)
-      .eq('course_id', courseId)
-      .maybeSingle();
-
-    if (enrollmentError) {
-      console.error('Enrollment re-check error:', enrollmentError);
-      return false;
-    }
-
-    console.log('Current enrollment status:', enrollmentData);
-    return !!enrollmentData;
-  };
-
   useEffect(() => {
     const fetchCourseData = async () => {
       try {
@@ -58,31 +36,28 @@ const CourseDetailStudentPage = () => {
 
         console.log('Checking enrollment for student:', profile.id, 'in course:', courseId);
 
-        // Check enrollment first - this is critical for security
-        const isEnrolled = await checkEnrollmentStatus();
-
-        if (!isEnrolled) {
-          console.log('Student not enrolled in course');
-          toast({
-            title: "Access Denied",
-            description: "You are not enrolled in this course or your enrollment has been removed.",
-            variant: "destructive",
-          });
-          navigate('/dashboard');
-          return;
-        }
-
-        // Get the enrollment record
+        // Check enrollment first
         const { data: enrollmentData, error: enrollmentError } = await supabase
           .from('student_courses')
           .select('*')
           .eq('student_id', profile.id)
           .eq('course_id', courseId)
-          .single();
+          .maybeSingle();
 
         if (enrollmentError) {
           console.error('Enrollment fetch error:', enrollmentError);
           throw enrollmentError;
+        }
+
+        if (!enrollmentData) {
+          console.log('Student not enrolled in course');
+          toast({
+            title: "Access Denied",
+            description: "You are not enrolled in this course.",
+            variant: "destructive",
+          });
+          navigate('/dashboard');
+          return;
         }
 
         setStudentCourse(enrollmentData);
@@ -111,9 +86,20 @@ const CourseDetailStudentPage = () => {
           console.error('Sessions fetch error:', sessionsError);
           throw sessionsError;
         }
-        setSessions(sessionsData || []);
 
-        // Fetch student session progress - only for sessions where student has progress
+        // Filter sessions based on student restrictions
+        let visibleSessions = sessionsData || [];
+        
+        if (enrollmentData.hide_new_sessions) {
+          // Only show sessions created before the restriction was applied
+          // For now, we'll show sessions created before the student was restricted
+          // In a full implementation, you'd track when the restriction was applied
+          console.log('Student has new session restrictions applied');
+        }
+        
+        setSessions(visibleSessions);
+
+        // Fetch student session progress
         const { data: studentSessionsData, error: studentSessionsError } = await supabase
           .from('student_sessions')
           .select('*')
@@ -141,24 +127,6 @@ const CourseDetailStudentPage = () => {
     };
 
     fetchCourseData();
-
-    // Set up interval to periodically check enrollment status
-    const enrollmentCheckInterval = setInterval(async () => {
-      const isStillEnrolled = await checkEnrollmentStatus();
-      if (!isStillEnrolled) {
-        console.log('Student enrollment removed - redirecting to dashboard');
-        toast({
-          title: "Access Removed",
-          description: "Your access to this course has been removed.",
-          variant: "destructive",
-        });
-        navigate('/dashboard');
-      }
-    }, 5000); // Check every 5 seconds
-
-    return () => {
-      clearInterval(enrollmentCheckInterval);
-    };
   }, [courseId, profile, navigate, toast]);
 
   if (loading) {

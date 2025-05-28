@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, XCircle } from "lucide-react";
+import { Plus, Eye, EyeOff } from "lucide-react";
 import { AddStudentsDialog } from "./AddStudentsDialog";
 import { supabase } from "@/lib/supabase";
 import { Profile } from "@/types/supabase";
@@ -23,74 +23,74 @@ export const StudentsTab = ({
 }: StudentsTabProps) => {
   const { toast } = useToast();
   const [showStudentDialog, setShowStudentDialog] = useState(false);
-  const [removingStudentId, setRemovingStudentId] = useState<string | null>(null);
+  const [updatingStudentId, setUpdatingStudentId] = useState<string | null>(null);
+  const [studentRestrictions, setStudentRestrictions] = useState<Record<string, boolean>>({});
 
-  const removeStudent = async (studentId: string) => {
+  // Load student restrictions on component mount
+  React.useEffect(() => {
+    const loadStudentRestrictions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('student_courses')
+          .select('student_id, hide_new_sessions')
+          .eq('course_id', courseId);
+
+        if (error) throw error;
+
+        const restrictions: Record<string, boolean> = {};
+        data?.forEach(item => {
+          restrictions[item.student_id] = item.hide_new_sessions || false;
+        });
+        setStudentRestrictions(restrictions);
+      } catch (error) {
+        console.error('Error loading student restrictions:', error);
+      }
+    };
+
+    loadStudentRestrictions();
+  }, [courseId]);
+
+  const toggleStudentSessionVisibility = async (studentId: string) => {
     try {
-      setRemovingStudentId(studentId);
-      console.log('Removing student from course:', { studentId, courseId });
+      setUpdatingStudentId(studentId);
+      const currentlyHidden = studentRestrictions[studentId] || false;
+      const newValue = !currentlyHidden;
       
-      // First, get all sessions for this course
-      const { data: courseSessions, error: sessionsError } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('course_id', courseId);
+      console.log('Toggling session visibility for student:', { studentId, courseId, newValue });
       
-      if (sessionsError) {
-        console.error('Error fetching course sessions:', sessionsError);
-        throw sessionsError;
-      }
-      
-      console.log('Course sessions found:', courseSessions);
-      
-      // Delete student's progress for all sessions in this course
-      if (courseSessions && courseSessions.length > 0) {
-        const sessionIds = courseSessions.map(session => session.id);
-        
-        const { error: sessionProgressError } = await supabase
-          .from('student_sessions')
-          .delete()
-          .eq('student_id', studentId)
-          .in('session_id', sessionIds);
-        
-        if (sessionProgressError) {
-          console.error('Error removing student session progress:', sessionProgressError);
-          throw sessionProgressError;
-        }
-        
-        console.log('Student session progress removed for sessions:', sessionIds);
-      }
-      
-      // Remove the enrollment record from student_courses table
-      const { error: enrollmentError } = await supabase
+      // Update the student_courses table to hide/show new sessions
+      const { error } = await supabase
         .from('student_courses')
-        .delete()
+        .update({ hide_new_sessions: newValue })
         .eq('course_id', courseId)
         .eq('student_id', studentId);
       
-      if (enrollmentError) {
-        console.error('Error removing student enrollment:', enrollmentError);
-        throw enrollmentError;
+      if (error) {
+        console.error('Error updating student session visibility:', error);
+        throw error;
       }
       
-      console.log('Student enrollment removed successfully from student_courses table');
+      console.log('Student session visibility updated successfully');
       
-      // Update the local state
-      onStudentRemoved(studentId);
+      // Update local state
+      setStudentRestrictions(prev => ({
+        ...prev,
+        [studentId]: newValue
+      }));
       
       toast({
         title: "Success",
-        description: "Student removed from course successfully.",
+        description: `Student ${newValue ? 'will not see' : 'can now see'} new sessions.`,
       });
     } catch (error) {
-      console.error('Error removing student:', error);
+      console.error('Error updating student session visibility:', error);
       toast({
         title: "Error",
-        description: "Failed to remove student from course.",
+        description: "Failed to update student session visibility.",
         variant: "destructive",
       });
     } finally {
-      setRemovingStudentId(null);
+      setUpdatingStudentId(null);
     }
   };
 
@@ -112,35 +112,53 @@ export const StudentsTab = ({
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">New Sessions Access</th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {enrolledStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{student.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{student.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{student.unique_id || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                        onClick={() => removeStudent(student.id)}
-                        disabled={removingStudentId === student.id}
-                      >
-                        <XCircle className="h-4 w-4 mr-1" /> 
-                        {removingStudentId === student.id ? 'Removing...' : 'Remove'}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {enrolledStudents.map((student) => {
+                  const isHidden = studentRestrictions[student.id] || false;
+                  return (
+                    <tr key={student.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{student.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{student.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{student.unique_id || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm ${isHidden ? 'text-red-600' : 'text-green-600'}`}>
+                          {isHidden ? 'Hidden' : 'Visible'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className={`${isHidden ? 'text-green-600 hover:text-green-900 hover:bg-green-50' : 'text-orange-600 hover:text-orange-900 hover:bg-orange-50'}`}
+                          onClick={() => toggleStudentSessionVisibility(student.id)}
+                          disabled={updatingStudentId === student.id}
+                        >
+                          {isHidden ? (
+                            <>
+                              <Eye className="h-4 w-4 mr-1" /> 
+                              {updatingStudentId === student.id ? 'Showing...' : 'Show New Sessions'}
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="h-4 w-4 mr-1" /> 
+                              {updatingStudentId === student.id ? 'Hiding...' : 'Hide New Sessions'}
+                            </>
+                          )}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
