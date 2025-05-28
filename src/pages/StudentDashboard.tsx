@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -95,7 +96,6 @@ const StudentDashboard = () => {
         
         setCourses(formattedCourses);
         
-        
         // Calculate stats
         setStats({
           totalCourses: formattedCourses.length,
@@ -147,7 +147,6 @@ const StudentDashboard = () => {
     
     fetchDashboardData();
   }, [profile, user, authLoading, dataFetched, toast]);
-  
   
   // Prepare progress graph data
   const progressData = courses.map(({ course, studentCourse }) => ({
