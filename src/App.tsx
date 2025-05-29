@@ -22,6 +22,7 @@ import SessionViewPage from "./pages/SessionViewPage";
 import AdminSessionPage from "./pages/admin/AdminSessionPage";
 import CourseDetailStudentPage from "./pages/CourseDetailStudentPage";
 import About from './pages/About'; // تأكد من مسار الملف حسب مشروعك
+import Certificates from './pages/certificates'; // adjust path as needed
 
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/verify-reset" element={<VerifyResetPage />} />
             <Route path="/courses" element={<CoursesPage />} />
+            <Route path="/certificates" element={<Certificates />} />
 
             <Route path="/about" element={<About />} />
 

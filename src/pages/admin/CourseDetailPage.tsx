@@ -154,9 +154,18 @@ const CourseDetailPage = () => {
               {course.total_sessions} {course.total_sessions === 1 ? 'session' : 'sessions'}
             </p>
           </div>
-          <Button onClick={() => navigate('/admin')} variant="outline">
-            Back to Dashboard
-          </Button>
+
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/admin')} variant="outline">
+              Back to Dashboard
+            </Button>
+            <Button onClick={() => navigate('/certificates')}>
+              Go to Certificates
+            </Button>
+          </div>
+
+
+
         </div>
         
         <Tabs defaultValue="sessions" className="w-full">
