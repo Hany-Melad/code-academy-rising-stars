@@ -11,6 +11,8 @@ import { supabase, ensureValidRole } from "@/lib/supabase";
 import { Course, Profile, StudentCourse } from "@/types/supabase";
 import { Award, BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Link } from "react-router-dom";
+// src/pages/DashboardPage.tsx (or your student dashboard entry page)
 
 const StudentDashboard = () => {
   const { profile, user, isLoading: authLoading } = useAuth();
@@ -273,6 +275,7 @@ const StudentDashboard = () => {
             </div>
           )}
         </div>
+
       </div>
     </DashboardLayout>
   );

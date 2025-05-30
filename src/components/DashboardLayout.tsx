@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
-import { Book, Home, LogOut, Settings, Trophy, User } from "lucide-react";
+import { Award, Book, Home, LogOut, Settings, Trophy, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +26,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { title: "Courses", icon: Book, url: "/courses" },
     { title: "Leaderboard", icon: Trophy, url: "/leaderboard" },
     { title: "Profile", icon: User, url: "/profile" },
+    { title: "My Certificates", icon: Award, url: "/StudentCertificatespage" },
   ];
 
   const adminMenuItems = [

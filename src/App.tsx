@@ -22,8 +22,8 @@ import SessionViewPage from "./pages/SessionViewPage";
 import AdminSessionPage from "./pages/admin/AdminSessionPage";
 import CourseDetailStudentPage from "./pages/CourseDetailStudentPage";
 import About from './pages/About'; // تأكد من مسار الملف حسب مشروعك
-import Certificates from './pages/certificates'; // adjust path as needed
-
+import AdminCertificatespage from './pages/AdminCertificatespage'; // adjust path as needed
+import StudentCertificatespage from './pages/StudentCertificatespage'; // adjust path as needed
 
 const queryClient = new QueryClient();
 
@@ -39,7 +39,8 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/verify-reset" element={<VerifyResetPage />} />
             <Route path="/courses" element={<CoursesPage />} />
-            <Route path="/certificates" element={<Certificates />} />
+            <Route path="/certificates" element={<AdminCertificatespage />} />
+
 
             <Route path="/about" element={<About />} />
 
@@ -48,6 +49,9 @@ const App = () => (
             <Route element={<ProtectedRoute requiredRole="student" />}>
               <Route path="/dashboard" element={<StudentDashboard />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/StudentCertificatespage" element={<StudentCertificatespage />} />
+              <Route path="/student_Certificates" element={<StudentCertificatespage />} />
+
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/courses/:courseId" element={<CourseDetailStudentPage />} />
               <Route path="/courses/:courseId/sessions/:sessionId" element={<SessionViewPage />} />

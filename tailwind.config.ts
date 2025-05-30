@@ -23,6 +23,14 @@ export default {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
+				// These match the hex codes from your provided CSS
+				'academy-orange': '#F7941D',
+				'academy-blue': '#004B8D',
+				'academy-light-blue': '#00CFFF',
+				'academy-bg-light': '#e6f7fb', // For the background of the certificate
+				// You might already have 'academy-orange' and 'academy-blue'
+				// based on your leaderboard component's `from-academy-orange to-academy-blue` gradient
+			
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
@@ -110,7 +118,13 @@ export default {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'bounce-small': 'bounce-small 1s infinite'
-			}
+			},
+
+			// If you want custom font families, define them here
+        fontFamily: {
+        'sans': ['Arial', 'sans-serif'],
+        'serif': ['Georgia', 'serif'],
+      }
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
