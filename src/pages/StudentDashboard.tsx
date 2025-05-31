@@ -13,6 +13,7 @@ import { Award, BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
 // src/pages/DashboardPage.tsx (or your student dashboard entry page)
+// Removed Next.js router import and usage
 
 import { Database } from '@/types/supabase';
 
@@ -205,11 +206,23 @@ const StudentDashboard = () => {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-1">Welcome back, {profile?.name}!</h1>
-          <p className="text-muted-foreground">Here's an overview of your learning progress</p>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-1">Welcome back, {profile?.name}!</h1>
+              <p className="text-muted-foreground">Here's an overview of your learning progress</p>
+            </div>
+             <div className="px-4 py-2">
+              <Link to="/StudentCertificatespage">
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                >
+                  <Award className="w-4 h-4" />
+                  My Certificates
+                </button>
+              </Link>
+              </div>
+
         </div>
-        
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard 
