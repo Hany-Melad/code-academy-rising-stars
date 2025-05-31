@@ -1,12 +1,19 @@
-
 import { ReactNode } from "react";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
 import { Award, Book, Home, LogOut, Settings, Trophy, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -47,23 +54,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <a href={item.url} className="flex items-center">
-                          <item.icon className="w-5 h-5 mr-2" />
-                          <span>{item.title}</span>
-                        </a>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
+              <SidebarGroupLabel className="text-muted-foreground text-sm mb-2">Navigation</SidebarGroupLabel>
+              <div className="flex flex-col gap-2">
+                {menuItems.map((item) => (
+                  <Link key={item.title} to={item.url}>
+                    <button className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-black bg-white-600 hover:bg-blue-200 rounded-xl transition">
+                      <item.icon className="w-5 h-5" />
+                      {item.title}
+                    </button>
+                  </Link>
+                ))}
+              </div>
             </SidebarGroup>
-            
+
             <div className="mt-auto p-4">
               <div className="flex items-center gap-3 mb-4">
                 <Avatar className="h-10 w-10">
@@ -87,19 +90,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </SidebarContent>
         </Sidebar>
-        
+
         <div className="flex-1 overflow-auto">
           <div className="sticky top-0 z-10 bg-background p-4 border-b flex items-center justify-between">
             <SidebarTrigger />
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">
-                {isAdmin ? "Admin Dashboard" : "Student Dashboard"}
-              </span>
-            </div>
+            <span className="text-sm font-medium">
+              {isAdmin ? "Admin Dashboard" : "Student Dashboard"}
+            </span>
           </div>
-          <div className="p-4 sm:p-6 lg:p-8">
-            {children}
-          </div>
+          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
         </div>
       </div>
     </SidebarProvider>
