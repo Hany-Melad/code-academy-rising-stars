@@ -50,7 +50,6 @@ const App = () => (
               <Route path="/dashboard" element={<StudentDashboard />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/StudentCertificatespage" element={<StudentCertificatespage />} />
-              <Route path="/student_Certificates" element={<StudentCertificatespage />} />
 
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/courses/:courseId" element={<CourseDetailStudentPage />} />
