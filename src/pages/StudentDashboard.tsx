@@ -8,11 +8,19 @@ import { CourseCard } from "@/components/courses/CourseCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, ensureValidRole } from "@/lib/supabase";
-import { Course, Profile, StudentCourse } from "@/types/supabase";
+import { Course, Profile } from "@/types/supabase";
 import { Award, BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
 // src/pages/DashboardPage.tsx (or your student dashboard entry page)
+
+import { Database } from '@/types/supabase';
+
+type SupabaseStudentCourse = Database['public']['Tables']['student_courses']['Row'];
+
+type StudentCourse = SupabaseStudentCourse & {
+  hide_new_sessions?: boolean; // ✅ extend locally
+};
 
 const StudentDashboard = () => {
   const { profile, user, isLoading: authLoading } = useAuth();
@@ -93,6 +101,7 @@ const StudentDashboard = () => {
               assigned_by: data.assigned_by,
               completed_at: data.completed_at,
               hide_new_sessions: data.hide_new_sessions || false,
+              
             } as StudentCourse
           }));
         

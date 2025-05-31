@@ -6,8 +6,16 @@ import { Link } from "react-router-dom";
 import type { Tables } from '@/integrations/supabase/types';
 import { Progress } from "@/components/ui/progress";
 
+
+import { Database } from '@/types/supabase';
+
+type SupabaseStudentCourse = Database['public']['Tables']['student_courses']['Row'];
+
+type StudentCourse = SupabaseStudentCourse & {
+  hide_new_sessions?: boolean; // ✅ extend locally
+};
+
 type Course = Tables<'courses'>;
-type StudentCourse = Tables<'student_courses'>;
 
 interface CourseCardProps {
   course: Course;
