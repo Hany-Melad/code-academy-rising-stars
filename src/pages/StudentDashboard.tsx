@@ -1,9 +1,9 @@
-
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
 import { ProgressGraph } from "@/components/dashboard/ProgressGraph";
+import { SubscriptionCard } from "@/components/dashboard/SubscriptionCard";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,11 +21,21 @@ type StudentCourse = SupabaseStudentCourse & {
   hide_new_sessions?: boolean;
 };
 
+type SubscriptionData = {
+  id: string;
+  remaining_sessions: number;
+  total_sessions: number;
+  plan_duration_months: number;
+  warning: boolean;
+  course_title: string;
+};
+
 const StudentDashboard = () => {
   const { profile, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<{course: Course, studentCourse: StudentCourse}[]>([]);
   const [topStudents, setTopStudents] = useState<Profile[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataFetched, setDataFetched] = useState(false);
@@ -110,6 +120,35 @@ const StudentDashboard = () => {
           ),
           totalPoints: profile.total_points || 0,
         });
+        
+        // Fetch subscription data
+        console.log("Fetching subscription data for profile:", profile.id);
+        const { data: subscriptionData, error: subscriptionError } = await supabase
+          .from('student_course_subscription')
+          .select(`
+            *,
+            student_course:student_courses(
+              course:courses(title)
+            )
+          `)
+          .eq('student_course.student_id', profile.id);
+
+        if (subscriptionError) {
+          console.error("Error fetching subscriptions:", subscriptionError);
+        } else {
+          console.log("Subscription data:", subscriptionData);
+          const formattedSubscriptions = (subscriptionData || [])
+            .filter(sub => sub.student_course?.course)
+            .map(sub => ({
+              id: sub.id,
+              remaining_sessions: sub.remaining_sessions,
+              total_sessions: sub.total_sessions,
+              plan_duration_months: sub.plan_duration_months,
+              warning: sub.warning,
+              course_title: sub.student_course.course.title
+            }));
+          setSubscriptions(formattedSubscriptions);
+        }
         
         console.log("Fetching top students");
         const { data: studentsData, error: studentsError } = await supabase
@@ -245,6 +284,9 @@ const StudentDashboard = () => {
           />
           <LeaderboardCard students={topStudents} />
         </div>
+
+        {/* Add subscription status section */}
+        <SubscriptionCard subscriptions={subscriptions} />
         
         <div>
           <h2 className="text-xl font-bold mb-4">Your Courses</h2>
