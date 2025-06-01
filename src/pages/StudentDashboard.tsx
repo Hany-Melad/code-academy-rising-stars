@@ -12,15 +12,13 @@ import { Course, Profile } from "@/types/supabase";
 import { Award, BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
-// src/pages/DashboardPage.tsx (or your student dashboard entry page)
-// Removed Next.js router import and usage
 
 import { Database } from '@/types/supabase';
 
 type SupabaseStudentCourse = Database['public']['Tables']['student_courses']['Row'];
 
 type StudentCourse = SupabaseStudentCourse & {
-  hide_new_sessions?: boolean; // ✅ extend locally
+  hide_new_sessions?: boolean;
 };
 
 const StudentDashboard = () => {
@@ -45,13 +43,11 @@ const StudentDashboard = () => {
     console.log("Profile:", profile);
     console.log("Data fetched:", dataFetched);
 
-    // Don't fetch if auth is still loading or data already fetched
     if (authLoading || dataFetched) {
       console.log("Skipping fetch - auth loading or data already fetched");
       return;
     }
 
-    // If no user, set error and stop loading
     if (!user) {
       console.log("No user found");
       setError("Please sign in to view your dashboard");
@@ -59,7 +55,6 @@ const StudentDashboard = () => {
       return;
     }
 
-    // If no profile yet, wait for it
     if (!profile) {
       console.log("No profile found, waiting...");
       return;
@@ -71,7 +66,6 @@ const StudentDashboard = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch enrolled courses
         console.log("Fetching enrolled courses for profile:", profile.id);
         const { data: enrolledCoursesData, error: enrolledError } = await supabase
           .from('student_courses')
@@ -88,7 +82,6 @@ const StudentDashboard = () => {
         
         console.log("Enrolled courses data:", enrolledCoursesData);
         
-        // Format courses data
         const formattedCourses = (enrolledCoursesData || [])
           .filter(data => data.course)
           .map(data => ({
@@ -102,13 +95,11 @@ const StudentDashboard = () => {
               assigned_by: data.assigned_by,
               completed_at: data.completed_at,
               hide_new_sessions: data.hide_new_sessions || false,
-              
             } as StudentCourse
           }));
         
         setCourses(formattedCourses);
         
-        // Calculate stats
         setStats({
           totalCourses: formattedCourses.length,
           completedCourses: formattedCourses.filter(c => 
@@ -120,7 +111,6 @@ const StudentDashboard = () => {
           totalPoints: profile.total_points || 0,
         });
         
-        // Fetch top students
         console.log("Fetching top students");
         const { data: studentsData, error: studentsError } = await supabase
           .from('profiles')
@@ -160,14 +150,12 @@ const StudentDashboard = () => {
     fetchDashboardData();
   }, [profile, user, authLoading, dataFetched, toast]);
   
-  // Prepare progress graph data
   const progressData = courses.map(({ course, studentCourse }) => ({
     name: course.title.length > 15 ? course.title.substring(0, 15) + '...' : course.title,
     completed: studentCourse.progress || 0,
     total: course.total_sessions || 0,
   }));
 
-  // Show loading state
   if (authLoading || loading) {
     return (
       <DashboardLayout>
@@ -181,7 +169,6 @@ const StudentDashboard = () => {
     );
   }
 
-  // Show error state
   if (error) {
     return (
       <DashboardLayout>
@@ -223,7 +210,7 @@ const StudentDashboard = () => {
               </div>
 
         </div>
-        {/* Stats */}
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard 
             title="Total Courses"
@@ -251,7 +238,6 @@ const StudentDashboard = () => {
           />
         </div>
         
-        {/* Progress and Leaderboard */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <ProgressGraph 
             data={progressData}
@@ -260,7 +246,6 @@ const StudentDashboard = () => {
           <LeaderboardCard students={topStudents} />
         </div>
         
-        {/* Enrolled courses */}
         <div>
           <h2 className="text-xl font-bold mb-4">Your Courses</h2>
           {courses.length > 0 ? (
