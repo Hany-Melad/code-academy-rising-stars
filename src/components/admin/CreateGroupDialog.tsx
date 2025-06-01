@@ -168,18 +168,24 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Course</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a course" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      {courses.map((course) => (
-                        <SelectItem key={course.id} value={course.id}>
-                          {course.title}
+                    <SelectContent className="z-[100] bg-white border border-gray-200 shadow-lg">
+                      {courses.length === 0 ? (
+                        <SelectItem value="no-courses" disabled>
+                          No courses available
                         </SelectItem>
-                      ))}
+                      ) : (
+                        courses.map((course) => (
+                          <SelectItem key={course.id} value={course.id}>
+                            {course.title}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -249,18 +255,24 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Co-Admin (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a co-admin" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      {admins.map((admin) => (
-                        <SelectItem key={admin.id} value={admin.id}>
-                          {admin.name}
+                    <SelectContent className="z-[100] bg-white border border-gray-200 shadow-lg">
+                      {admins.length === 0 ? (
+                        <SelectItem value="no-admins" disabled>
+                          No other admins available
                         </SelectItem>
-                      ))}
+                      ) : (
+                        admins.map((admin) => (
+                          <SelectItem key={admin.id} value={admin.id}>
+                            {admin.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
