@@ -41,6 +41,7 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
   const [courses, setCourses] = useState<Array<{id: string, title: string}>>([]);
   const [admins, setAdmins] = useState<Array<{id: string, name: string}>>([]);
   const [loading, setLoading] = useState(false);
+  const [coursesLoading, setCoursesLoading] = useState(false);
 
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
@@ -64,6 +65,9 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
     if (!profile) return;
 
     try {
+      setCoursesLoading(true);
+      console.log('Fetching courses for admin:', profile.id);
+      
       const { data, error } = await supabase
         .from('admin_courses')
         .select(`
@@ -73,13 +77,23 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
 
       if (error) throw error;
 
+      console.log('Admin courses data:', data);
+
       const courseList = (data || [])
         .filter(item => item.course)
         .map(item => item.course as {id: string, title: string});
 
+      console.log('Processed course list:', courseList);
       setCourses(courseList);
     } catch (error) {
       console.error('Error fetching courses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load courses",
+        variant: "destructive",
+      });
+    } finally {
+      setCoursesLoading(false);
     }
   };
 
@@ -171,13 +185,17 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a course" />
+                        <SelectValue placeholder={coursesLoading ? "Loading courses..." : "Select a course"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="z-[100] bg-white border border-gray-200 shadow-lg">
-                      {courses.length === 0 ? (
+                      {coursesLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Loading courses...
+                        </SelectItem>
+                      ) : courses.length === 0 ? (
                         <SelectItem value="no-courses" disabled>
-                          No courses available
+                          No courses available. Create a course first in the admin dashboard.
                         </SelectItem>
                       ) : (
                         courses.map((course) => (
@@ -284,7 +302,7 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || courses.length === 0}>
                 {loading ? "Creating..." : "Create Group"}
               </Button>
             </DialogFooter>
