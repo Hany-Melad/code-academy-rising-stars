@@ -1,14 +1,16 @@
 
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
+  children: React.ReactNode;
   requiredRole?: 'student' | 'admin';
   redirectPath?: string;
 }
 
 export const ProtectedRoute = ({
+  children,
   requiredRole,
   redirectPath = '/auth',
 }: ProtectedRouteProps) => {
@@ -32,5 +34,5 @@ export const ProtectedRoute = ({
     return <Navigate to={redirectTo} replace />;
   }
 
-  return <Outlet />;
+  return <>{children}</>;
 };
