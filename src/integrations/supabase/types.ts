@@ -30,6 +30,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_courses: {
+        Row: {
+          admin_id: string
+          course_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          admin_id: string
+          course_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          admin_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_courses_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           background_color: string | null
@@ -77,6 +113,110 @@ export type Database = {
           secondary_color?: string | null
         }
         Relationships: []
+      }
+      course_group_students: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          student_course_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          student_course_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          student_course_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_group_students_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "course_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_group_students_student_course_id_fkey"
+            columns: ["student_course_id"]
+            isOneToOne: false
+            referencedRelation: "student_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_group_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_groups: {
+        Row: {
+          allowed_admin_id: string | null
+          branch: string | null
+          course_id: string
+          created_at: string
+          created_by: string
+          id: string
+          start_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_admin_id?: string | null
+          branch?: string | null
+          course_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          start_date: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_admin_id?: string | null
+          branch?: string | null
+          course_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          start_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_groups_allowed_admin_id_fkey"
+            columns: ["allowed_admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_groups_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       courses: {
         Row: {
@@ -343,6 +483,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["unique_id"]
+          },
+        ]
+      }
+      student_course_subscription: {
+        Row: {
+          created_at: string
+          id: string
+          plan_duration_months: number
+          remaining_sessions: number
+          student_course_id: string
+          total_sessions: number
+          updated_at: string
+          warning: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan_duration_months?: number
+          remaining_sessions?: number
+          student_course_id: string
+          total_sessions?: number
+          updated_at?: string
+          warning?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan_duration_months?: number
+          remaining_sessions?: number
+          student_course_id?: string
+          total_sessions?: number
+          updated_at?: string
+          warning?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_course_subscription_student_course_id_fkey"
+            columns: ["student_course_id"]
+            isOneToOne: false
+            referencedRelation: "student_courses"
+            referencedColumns: ["id"]
           },
         ]
       }

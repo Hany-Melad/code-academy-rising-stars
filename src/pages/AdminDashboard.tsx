@@ -6,7 +6,7 @@ import { AdminCourseCard } from "@/components/courses/CourseCardWithAdmin";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, ensureValidRole } from "@/lib/supabase";
 import { Course, Profile } from "@/types/supabase";
-import { Book, Users, Plus } from "lucide-react";
+import { Book, Users, Plus, UserPlus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -34,6 +34,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [dataFetched, setDataFetched] = useState(false);
   const [openCourseDialog, setOpenCourseDialog] = useState(false);
+  const [totalGroups, setTotalGroups] = useState(0);
 
   // Course form setup
   const form = useForm<CourseFormValues>({
@@ -68,20 +69,26 @@ const AdminDashboard = () => {
         console.log("Starting admin dashboard data fetch for profile:", profile.id);
         setLoading(true);
         
-        // Fetch all courses
-        console.log("Fetching courses...");
-        const { data: coursesData, error: coursesError } = await supabase
-          .from('courses')
-          .select('*')
-          .order('created_at', { ascending: false });
+        // Fetch courses created by this admin
+        console.log("Fetching admin courses...");
+        const { data: adminCoursesData, error: adminCoursesError } = await supabase
+          .from('admin_courses')
+          .select(`
+            course:courses(*)
+          `)
+          .eq('admin_id', profile.id);
         
-        if (coursesError) {
-          console.error("Error fetching courses:", coursesError);
-          throw coursesError;
+        if (adminCoursesError) {
+          console.error("Error fetching admin courses:", adminCoursesError);
+          throw adminCoursesError;
         }
         
-        console.log("Courses data:", coursesData);
-        setCourses(coursesData || []);
+        console.log("Admin courses data:", adminCoursesData);
+        const adminCourses = (adminCoursesData || [])
+          .filter(item => item.course)
+          .map(item => item.course as Course);
+        
+        setCourses(adminCourses);
         
         // Fetch all students
         console.log("Fetching students...");
@@ -105,6 +112,19 @@ const AdminDashboard = () => {
         }));
         
         setStudents(typedStudents);
+
+        // Fetch groups count for this admin
+        const { data: groupsData, error: groupsError } = await supabase
+          .from('course_groups')
+          .select('id', { count: 'exact' })
+          .or(`created_by.eq.${profile.id},allowed_admin_id.eq.${profile.id}`);
+        
+        if (groupsError) {
+          console.error("Error fetching groups:", groupsError);
+        } else {
+          setTotalGroups(groupsData?.length || 0);
+        }
+        
         setDataFetched(true);
         console.log("Admin dashboard data fetch completed successfully");
         
@@ -127,25 +147,45 @@ const AdminDashboard = () => {
   const handleCreateCourse = async (data: CourseFormValues) => {
     try {
       console.log("Creating course with data:", data);
-      const { error } = await supabase
+      
+      // Create the course
+      const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .insert({
           title: data.title,
           description: data.description || null,
           total_sessions: 0,
+        })
+        .select()
+        .single();
+      
+      if (courseError) throw courseError;
+      
+      // Create the admin-course relationship
+      const { error: adminCourseError } = await supabase
+        .from('admin_courses')
+        .insert({
+          admin_id: profile!.id,
+          course_id: courseData.id,
         });
       
-      if (error) throw error;
+      if (adminCourseError) throw adminCourseError;
       
       // Refetch courses data
-      const { data: newCourses, error: fetchError } = await supabase
-        .from('courses')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data: adminCoursesData, error: fetchError } = await supabase
+        .from('admin_courses')
+        .select(`
+          course:courses(*)
+        `)
+        .eq('admin_id', profile!.id);
       
       if (fetchError) throw fetchError;
       
-      setCourses(newCourses || []);
+      const adminCourses = (adminCoursesData || [])
+        .filter(item => item.course)
+        .map(item => item.course as Course);
+      
+      setCourses(adminCourses);
       setOpenCourseDialog(false);
       form.reset();
       
@@ -183,7 +223,7 @@ const AdminDashboard = () => {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-1">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Manage courses, students and track progress</p>
+            <p className="text-muted-foreground">Manage your courses, groups and track progress</p>
           </div>
           <div className="flex gap-2">
             <Button 
@@ -192,13 +232,18 @@ const AdminDashboard = () => {
             >
               <Plus className="w-4 h-4 mr-2" /> Add Course
             </Button>
+            <Button variant="outline" asChild>
+              <Link to="/admin/groups">
+                <UserPlus className="w-4 h-4 mr-2" /> Manage Groups
+              </Link>
+            </Button>
           </div>
         </div>
         
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard 
-            title="Total Courses"
+            title="My Courses"
             value={courses.length}
             icon={Book}
             colorVariant="blue"
@@ -208,6 +253,12 @@ const AdminDashboard = () => {
             value={students.length}
             icon={Users}
             colorVariant="orange"
+          />
+          <StatsCard 
+            title="My Groups"
+            value={totalGroups}
+            icon={UserPlus}
+            colorVariant="purple"
           />
           <StatsCard 
             title="Active Students"
@@ -268,10 +319,10 @@ const AdminDashboard = () => {
           )}
         </div>
         
-        {/* Recent Courses */}
+        {/* My Courses */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Recent Courses</h2>
+            <h2 className="text-xl font-bold">My Courses</h2>
             <Button variant="outline" asChild>
               <Link to="/admin/courses">View All</Link>
             </Button>
