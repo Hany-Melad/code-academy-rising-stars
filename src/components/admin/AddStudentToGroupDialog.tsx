@@ -184,7 +184,7 @@ export function AddStudentToGroupDialog({
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="student_id">Student</Label>
-            <Select onValueChange={form.setValue} defaultValue={form.getValues("student_id")}>
+            <Select onValueChange={(value) => form.setValue("student_id", value)} defaultValue={form.getValues("student_id")}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a student" />
               </SelectTrigger>

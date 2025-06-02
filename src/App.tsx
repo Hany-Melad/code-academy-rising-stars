@@ -68,7 +68,7 @@ function App() {
               }
             />
             <Route
-              path="/session/:sessionId"
+              path="/courses/:courseId/sessions/:sessionId"
               element={
                 <ProtectedRoute requiredRole="student">
                   <SessionViewPage />
@@ -102,7 +102,7 @@ function App() {
               }
             />
             <Route
-              path="/admin/sessions/:sessionId"
+              path="/admin/courses/:courseId/sessions/:sessionId"
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminSessionPage />
