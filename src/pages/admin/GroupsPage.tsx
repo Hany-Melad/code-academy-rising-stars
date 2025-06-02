@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Users, Calendar, MapPin } from "lucide-react";
+import { Plus, Users, Calendar, MapPin, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CreateGroupDialog } from "@/components/admin/CreateGroupDialog";
+import { GlobalSubscriptionDialog } from "@/components/admin/GlobalSubscriptionDialog";
 
 interface CourseGroup {
   id: string;
@@ -38,6 +39,7 @@ const GroupsPage = () => {
   const [groups, setGroups] = useState<CourseGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openSubscriptionDialog, setOpenSubscriptionDialog] = useState(false);
 
   const fetchGroups = async () => {
     if (!profile) return;
@@ -94,6 +96,12 @@ const GroupsPage = () => {
     setOpenCreateDialog(false);
   };
 
+  const handleSubscriptionUpdated = () => {
+    // Force refresh of groups data to reflect any changes
+    fetchGroups();
+    setOpenSubscriptionDialog(false);
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -113,12 +121,21 @@ const GroupsPage = () => {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-1">Course Groups</h1>
-            <p className="text-muted-foreground">Manage student groups and subscriptions</p>
+            <p className="text-muted-foreground">Manage student groups and global subscriptions</p>
           </div>
-          <Button onClick={() => setOpenCreateDialog(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Group
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setOpenSubscriptionDialog(true)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Manage Subscription
+            </Button>
+            <Button onClick={() => setOpenCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Group
+            </Button>
+          </div>
         </div>
 
         {groups.length > 0 ? (
@@ -177,6 +194,12 @@ const GroupsPage = () => {
         open={openCreateDialog}
         onOpenChange={setOpenCreateDialog}
         onGroupCreated={handleGroupCreated}
+      />
+
+      <GlobalSubscriptionDialog
+        open={openSubscriptionDialog}
+        onOpenChange={setOpenSubscriptionDialog}
+        onSubscriptionUpdated={handleSubscriptionUpdated}
       />
     </DashboardLayout>
   );

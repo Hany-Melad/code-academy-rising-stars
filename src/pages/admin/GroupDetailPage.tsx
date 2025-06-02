@@ -1,116 +1,270 @@
 
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, Minus, Eye, EyeOff, AlertTriangle, UserPlus } from "lucide-react";
+import { ArrowLeft, Book, UserPlus, MapPin, Calendar } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 import { AddStudentToGroupDialog } from "@/components/admin/AddStudentToGroupDialog";
+import { GroupStudentsTab } from "@/components/admin/GroupStudentsTab";
 
-interface GroupStudent {
-  id: string;
-  student: {
-    id: string;
-    name: string;
-    unique_id: string | null;
-  };
-  student_course: {
-    id: string;
-    hide_new_sessions: boolean;
-  };
-  subscription: {
-    id: string;
-    total_sessions: number;
-    remaining_sessions: number;
-    warning: boolean;
-  } | null;
-}
-
-interface GroupDetail {
+interface CourseGroup {
   id: string;
   title: string;
   branch: string | null;
   start_date: string;
+  created_at: string;
+  created_by: string;
+  allowed_admin_id: string | null;
   course: {
     id: string;
     title: string;
     description: string | null;
   };
-  creator: {
-    name: string;
-  };
+}
+
+interface Student {
+  id: string;
+  name: string;
+  unique_id: string | null;
+  total_points: number;
+  remaining_sessions: number;
+  total_sessions: number;
 }
 
 const GroupDetailPage = () => {
-  const { groupId } = useParams<{ groupId: string }>();
+  const { groupId } = useParams();
   const { profile } = useAuth();
   const { toast } = useToast();
-  const [group, setGroup] = useState<GroupDetail | null>(null);
-  const [students, setStudents] = useState<GroupStudent[]>([]);
+  const [group, setGroup] = useState<CourseGroup | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openAddStudentDialog, setOpenAddStudentDialog] = useState(false);
 
-  const fetchGroupData = async () => {
-    if (!groupId || !profile) return;
+  const getStudentGlobalSubscription = async (studentId: string) => {
+    console.log('Getting global subscription for student:', studentId);
     
+    // Get any student course for this student to find their global subscription
+    const { data: studentCourses, error: coursesError } = await supabase
+      .from('student_courses')
+      .select('id')
+      .eq('student_id', studentId)
+      .limit(1);
+
+    console.log('Student courses for subscription check:', { studentCourses, coursesError });
+
+    if (!studentCourses || studentCourses.length === 0) {
+      console.log('No student courses found for subscription');
+      return { remaining_sessions: 0, total_sessions: 0 };
+    }
+
+    const { data: subscription, error: subError } = await supabase
+      .from('student_course_subscription')
+      .select('*')
+      .eq('student_course_id', studentCourses[0].id)
+      .single();
+
+    console.log('Subscription data:', { subscription, subError });
+
+    if (!subscription) {
+      console.log('No subscription found');
+      return { remaining_sessions: 0, total_sessions: 0 };
+    }
+
+    return {
+      remaining_sessions: subscription.remaining_sessions,
+      total_sessions: subscription.total_sessions,
+      subscription_id: subscription.id
+    };
+  };
+
+  const updateStudentGlobalSubscription = async (studentId: string, newRemainingSessions: number, newTotalSessions: number) => {
+    console.log('Updating global subscription:', { studentId, newRemainingSessions, newTotalSessions });
+    
+    // Get any student course for this student
+    const { data: studentCourses } = await supabase
+      .from('student_courses')
+      .select('id')
+      .eq('student_id', studentId)
+      .limit(1);
+
+    if (!studentCourses || studentCourses.length === 0) {
+      throw new Error('Student course not found');
+    }
+
+    const { data: subscription } = await supabase
+      .from('student_course_subscription')
+      .select('*')
+      .eq('student_course_id', studentCourses[0].id)
+      .single();
+
+    if (!subscription) {
+      throw new Error('No subscription found for this student');
+    }
+
+    const newPlanDurationMonths = Math.ceil(newTotalSessions / 4);
+
+    const { error } = await supabase
+      .from('student_course_subscription')
+      .update({
+        total_sessions: newTotalSessions,
+        remaining_sessions: newRemainingSessions,
+        plan_duration_months: newPlanDurationMonths,
+        warning: newRemainingSessions <= 2,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('student_course_id', studentCourses[0].id);
+
+    if (error) {
+      console.error('Error updating subscription:', error);
+      throw error;
+    }
+
+    console.log('Successfully updated global subscription');
+  };
+
+  const handleAddSessions = async (studentId: string, sessions: number) => {
+    try {
+      console.log('Adding sessions to student:', studentId, sessions);
+      const currentSubscription = await getStudentGlobalSubscription(studentId);
+      
+      const newTotalSessions = currentSubscription.total_sessions + sessions;
+      const newRemainingSessions = currentSubscription.remaining_sessions + sessions;
+
+      await updateStudentGlobalSubscription(studentId, newRemainingSessions, newTotalSessions);
+
+      // Create notification
+      await supabase
+        .from('student_notifications')
+        .insert({
+          student_id: studentId,
+          title: 'Sessions Added',
+          message: `${sessions} session${sessions !== 1 ? 's' : ''} added to your global subscription. You now have ${newRemainingSessions} sessions remaining.`,
+          notification_type: 'session_update',
+        });
+
+      toast({
+        title: "Sessions added",
+        description: `${sessions} session${sessions !== 1 ? 's' : ''} added successfully`,
+      });
+
+      // Refresh data to show updated sessions across all groups
+      await fetchGroupDetails();
+    } catch (error) {
+      console.error('Error adding sessions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add sessions",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveSessions = async (studentId: string, sessions: number) => {
+    try {
+      console.log('Removing sessions from student:', studentId, sessions);
+      const currentSubscription = await getStudentGlobalSubscription(studentId);
+      
+      const newTotalSessions = Math.max(0, currentSubscription.total_sessions - sessions);
+      const newRemainingSessions = Math.max(0, currentSubscription.remaining_sessions - sessions);
+
+      await updateStudentGlobalSubscription(studentId, newRemainingSessions, newTotalSessions);
+
+      // Create notification
+      await supabase
+        .from('student_notifications')
+        .insert({
+          student_id: studentId,
+          title: 'Sessions Removed',
+          message: `${sessions} session${sessions !== 1 ? 's' : ''} removed from your global subscription. You now have ${newRemainingSessions} sessions remaining.`,
+          notification_type: 'session_update',
+        });
+
+      toast({
+        title: "Sessions removed",
+        description: `${sessions} session${sessions !== 1 ? 's' : ''} removed successfully`,
+      });
+
+      // Refresh data to show updated sessions across all groups
+      await fetchGroupDetails();
+    } catch (error) {
+      console.error('Error removing sessions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove sessions",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchGroupDetails = async () => {
+    if (!profile || !groupId) return;
+
     try {
       setLoading(true);
-      
+      console.log('Fetching group details for:', groupId);
+
       // Fetch group details
       const { data: groupData, error: groupError } = await supabase
         .from('course_groups')
         .select(`
           *,
-          course:courses(id, title, description),
-          creator:profiles!course_groups_created_by_fkey(name)
+          course:courses(id, title, description)
         `)
         .eq('id', groupId)
-        .or(`created_by.eq.${profile.id},allowed_admin_id.eq.${profile.id}`)
         .single();
 
-      if (groupError) throw groupError;
+      if (groupError) {
+        console.error('Error fetching group:', groupError);
+        throw groupError;
+      }
       
+      console.log('Group data:', groupData);
       setGroup(groupData);
 
-      // Fetch students in group with their subscriptions
+      // Fetch students in the group
       const { data: studentsData, error: studentsError } = await supabase
         .from('course_group_students')
         .select(`
-          id,
-          student:profiles!course_group_students_student_id_fkey(id, name, unique_id),
-          student_course:student_courses!course_group_students_student_course_id_fkey(id, hide_new_sessions)
+          student:profiles (
+            id,
+            name,
+            unique_id,
+            total_points
+          )
         `)
         .eq('group_id', groupId);
 
-      if (studentsError) throw studentsError;
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+        throw studentsError;
+      }
 
-      // Fetch subscriptions for each student
-      const studentsWithSubscriptions = await Promise.all(
-        (studentsData || []).map(async (student) => {
-          const { data: subscription } = await supabase
-            .from('student_course_subscription')
-            .select('*')
-            .eq('student_course_id', student.student_course.id)
-            .maybeSingle();
+      console.log('Students data:', studentsData);
 
+      // Fetch global subscription details for each student
+      const studentsWithSessions = await Promise.all(
+        studentsData.map(async (item) => {
+          console.log('Processing student:', item.student);
+          const subscriptionData = await getStudentGlobalSubscription(item.student.id);
+          
           return {
-            ...student,
-            subscription
+            ...item.student,
+            remaining_sessions: subscriptionData.remaining_sessions,
+            total_sessions: subscriptionData.total_sessions,
           };
         })
       );
 
-      setStudents(studentsWithSubscriptions);
+      console.log('Students with sessions:', studentsWithSessions);
+      setStudents(studentsWithSessions as Student[]);
     } catch (error) {
-      console.error('Error fetching group data:', error);
+      console.error('Error fetching group details:', error);
       toast({
         title: "Error",
-        description: "Failed to load group data",
+        description: "Failed to load group details",
         variant: "destructive",
       });
     } finally {
@@ -118,114 +272,13 @@ const GroupDetailPage = () => {
     }
   };
 
+  const handleStudentAdded = () => {
+    fetchGroupDetails();
+  };
+
   useEffect(() => {
-    fetchGroupData();
+    fetchGroupDetails();
   }, [groupId, profile]);
-
-  const updateSessions = async (studentCourseId: string, change: number) => {
-    try {
-      const { data: subscription, error: fetchError } = await supabase
-        .from('student_course_subscription')
-        .select('*')
-        .eq('student_course_id', studentCourseId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const newRemaining = Math.max(0, subscription.remaining_sessions + change);
-      const newTotal = Math.max(newRemaining, subscription.total_sessions + change);
-
-      const { error: updateError } = await supabase
-        .from('student_course_subscription')
-        .update({
-          remaining_sessions: newRemaining,
-          total_sessions: newTotal,
-          warning: newRemaining <= 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscription.id);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: "Sessions updated",
-        description: `Sessions ${change > 0 ? 'added' : 'removed'} successfully`,
-      });
-
-      fetchGroupData();
-    } catch (error) {
-      console.error('Error updating sessions:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update sessions",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const toggleCourseVisibility = async (studentCourseId: string, currentlyHidden: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('student_courses')
-        .update({
-          hide_new_sessions: !currentlyHidden
-        })
-        .eq('id', studentCourseId);
-
-      if (error) throw error;
-
-      toast({
-        title: currentlyHidden ? "Course shown" : "Course hidden",
-        description: `Course is now ${currentlyHidden ? 'visible' : 'hidden'} for the student`,
-      });
-
-      fetchGroupData();
-    } catch (error) {
-      console.error('Error toggling course visibility:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update course visibility",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const bulkUpdateSessions = async (change: number) => {
-    try {
-      const updates = students.map(async (student) => {
-        if (student.subscription) {
-          const newRemaining = Math.max(0, student.subscription.remaining_sessions + change);
-          const newTotal = Math.max(newRemaining, student.subscription.total_sessions + change);
-
-          return supabase
-            .from('student_course_subscription')
-            .update({
-              remaining_sessions: newRemaining,
-              total_sessions: newTotal,
-              warning: newRemaining <= 1,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', student.subscription.id);
-        }
-      });
-
-      await Promise.all(updates);
-
-      toast({
-        title: "Bulk update completed",
-        description: `Sessions ${change > 0 ? 'added' : 'removed'} for all students`,
-      });
-
-      fetchGroupData();
-    } catch (error) {
-      console.error('Error bulk updating sessions:', error);
-      toast({
-        title: "Error",
-        description: "Failed to bulk update sessions",
-        variant: "destructive",
-      });
-    }
-  };
 
   if (loading) {
     return (
@@ -233,25 +286,8 @@ const GroupDetailPage = () => {
         <div className="flex items-center justify-center h-[80vh]">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-t-academy-blue border-r-transparent border-b-academy-orange border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-lg text-gray-600">Loading group data...</p>
+            <p className="text-lg text-gray-600">Loading group details...</p>
           </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!group) {
-    return (
-      <DashboardLayout>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Group not found</h2>
-          <p className="text-gray-600 mb-4">The group you're looking for doesn't exist or you don't have permission to view it.</p>
-          <Button asChild>
-            <Link to="/admin/groups">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Groups
-            </Link>
-          </Button>
         </div>
       </DashboardLayout>
     );
@@ -260,162 +296,69 @@ const GroupDetailPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/admin/groups">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Link>
-          </Button>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">{group.title}</h1>
-            <p className="text-muted-foreground">
-              {group.course.title} • Started {new Date(group.start_date).toLocaleDateString()}
-            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/admin/groups" className="flex items-center gap-1">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Groups
+                </Link>
+              </Button>
+            </div>
+            <h1 className="text-3xl font-bold">{group?.title}</h1>
+            {group && (
+              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                <span className="flex items-center gap-1">
+                  <Book className="w-4 h-4" />
+                  {group.course?.title}
+                </span>
+                {group.branch && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {group.branch}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  Started {new Date(group.start_date).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setOpenAddStudentDialog(true)}
+              className="bg-academy-blue hover:bg-blue-600"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Student
+            </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle>Group Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                onClick={() => setOpenAddDialog(true)}
-                className="w-full"
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add Student
-              </Button>
-              
-              <Button 
-                onClick={() => bulkUpdateSessions(1)}
-                variant="outline"
-                className="w-full"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Session to All
-              </Button>
-              
-              <Button 
-                onClick={() => bulkUpdateSessions(-1)}
-                variant="outline"
-                className="w-full"
-              >
-                <Minus className="w-4 h-4 mr-2" />
-                Remove Session from All
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Students ({students.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {students.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Total Sessions</TableHead>
-                      <TableHead>Remaining</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {students.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-medium">
-                          {student.student.name}
-                        </TableCell>
-                        <TableCell>
-                          {student.student.unique_id || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {student.subscription?.total_sessions || 0}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {student.subscription?.remaining_sessions || 0}
-                            {student.subscription?.warning && (
-                              <AlertTriangle className="w-4 h-4 text-amber-500" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {student.student_course.hide_new_sessions && (
-                              <Badge variant="destructive">Hidden</Badge>
-                            )}
-                            {student.subscription?.warning && (
-                              <Badge variant="outline" className="text-amber-600 border-amber-200">
-                                Low Sessions
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateSessions(student.student_course.id, 1)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateSessions(student.student_course.id, -1)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => toggleCourseVisibility(
-                                student.student_course.id, 
-                                student.student_course.hide_new_sessions
-                              )}
-                            >
-                              {student.student_course.hide_new_sessions ? (
-                                <Eye className="w-3 h-3" />
-                              ) : (
-                                <EyeOff className="w-3 h-3" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8">
-                  <UserPlus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="font-medium text-gray-900 mb-2">No students yet</h3>
-                  <p className="text-gray-600 mb-4">Add students to this group to get started.</p>
-                  <Button onClick={() => setOpenAddDialog(true)}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add First Student
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Students Tab */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Students ({students.length})</h2>
+          </div>
+          
+          <GroupStudentsTab 
+            students={students}
+            groupId={groupId!}
+            onAddSessions={handleAddSessions}
+            onRemoveSessions={handleRemoveSessions}
+            onStudentRemoved={fetchGroupDetails}
+          />
         </div>
       </div>
 
       <AddStudentToGroupDialog
-        open={openAddDialog}
-        onOpenChange={setOpenAddDialog}
+        open={openAddStudentDialog}
+        onOpenChange={setOpenAddStudentDialog}
         groupId={groupId!}
-        courseId={group.course.id}
-        onStudentAdded={fetchGroupData}
+        courseId={group?.course.id || ''}
+        onStudentAdded={handleStudentAdded}
       />
     </DashboardLayout>
   );

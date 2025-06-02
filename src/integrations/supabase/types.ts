@@ -582,6 +582,36 @@ export type Database = {
           },
         ]
       }
+      student_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          notification_type: string
+          read_at: string | null
+          student_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          notification_type?: string
+          read_at?: string | null
+          student_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          student_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       student_sessions: {
         Row: {
           completed: boolean

@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,8 +13,6 @@ import { useToast } from "@/components/ui/use-toast";
 
 const addStudentFormSchema = z.object({
   studentId: z.string().min(1, "Please select a student"),
-  totalSessions: z.number().min(1, "Total sessions must be at least 1"),
-  planDurationMonths: z.number().min(1, "Plan duration must be at least 1 month"),
 });
 
 type AddStudentFormValues = z.infer<typeof addStudentFormSchema>;
@@ -44,8 +41,6 @@ export const AddStudentToGroupDialog = ({
     resolver: zodResolver(addStudentFormSchema),
     defaultValues: {
       studentId: "",
-      totalSessions: 4,
-      planDurationMonths: 1,
     },
   });
 
@@ -125,7 +120,7 @@ export const AddStudentToGroupDialog = ({
         studentCourseId = newEnrollment.id;
       }
 
-      // Add student to group
+      // Add student to group (no subscription creation here)
       const { error: groupError } = await supabase
         .from('course_group_students')
         .insert({
@@ -136,18 +131,19 @@ export const AddStudentToGroupDialog = ({
 
       if (groupError) throw groupError;
 
-      // Create subscription
-      const { error: subscriptionError } = await supabase
-        .from('student_course_subscription')
+      // Create notification for the student
+      const { error: notificationError } = await supabase
+        .from('student_notifications')
         .insert({
-          student_course_id: studentCourseId,
-          total_sessions: data.totalSessions,
-          remaining_sessions: data.totalSessions,
-          plan_duration_months: data.planDurationMonths,
-          warning: data.totalSessions <= 1,
+          student_id: data.studentId,
+          title: 'Added to New Group',
+          message: `You have been added to a new course group. Check your dashboard for details.`,
+          notification_type: 'group_added',
         });
 
-      if (subscriptionError) throw subscriptionError;
+      if (notificationError) {
+        console.error('Error creating notification:', notificationError);
+      }
 
       toast({
         title: "Student added",
@@ -171,7 +167,7 @@ export const AddStudentToGroupDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>Add Student to Group</DialogTitle>
         </DialogHeader>
@@ -199,44 +195,9 @@ export const AddStudentToGroupDialog = ({
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="totalSessions"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Total Sessions</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="1"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="planDurationMonths"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Plan Duration (Months)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="1"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
+                  <p className="text-sm text-muted-foreground">
+                    Note: Student will be added without a subscription. Use "Add Subscription Plan" to create their subscription.
+                  </p>
                 </FormItem>
               )}
             />

@@ -115,6 +115,7 @@ export interface Database {
           assigned_at: string
           assigned_by: string | null
           completed_at: string | null
+          hide_new_sessions: boolean
         }
         Insert: {
           id?: string
@@ -124,6 +125,7 @@ export interface Database {
           assigned_at?: string
           assigned_by?: string | null
           completed_at?: string | null
+          hide_new_sessions?: boolean
         }
         Update: {
           id?: string
@@ -133,6 +135,39 @@ export interface Database {
           assigned_at?: string
           assigned_by?: string | null
           completed_at?: string | null
+          hide_new_sessions?: boolean
+        }
+      }
+      student_course_subscription: {
+        Row: {
+          id: string
+          student_course_id: string
+          remaining_sessions: number
+          total_sessions: number
+          plan_duration_months: number
+          warning: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_course_id: string
+          remaining_sessions?: number
+          total_sessions?: number
+          plan_duration_months: number
+          warning?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_course_id?: string
+          remaining_sessions?: number
+          total_sessions?: number
+          plan_duration_months?: number
+          warning?: boolean
+          created_at?: string
+          updated_at?: string
         }
       }
       student_sessions: {
