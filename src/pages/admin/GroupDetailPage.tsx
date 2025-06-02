@@ -147,13 +147,13 @@ const GroupDetailPage = () => {
 
       await updateStudentGlobalSubscription(studentId, newRemainingSessions, newTotalSessions);
 
-      // Create notification
+      // Create notification with group name
       await supabase
         .from('student_notifications')
         .insert({
           student_id: studentId,
           title: 'Sessions Added',
-          message: `${sessions} session${sessions !== 1 ? 's' : ''} added to your global subscription. You now have ${newRemainingSessions} sessions remaining.`,
+          message: `${sessions} session${sessions !== 1 ? 's' : ''} added to your global subscription from group "${group?.title}". You now have ${newRemainingSessions} sessions remaining.`,
           notification_type: 'session_update',
         });
 
@@ -184,13 +184,13 @@ const GroupDetailPage = () => {
 
       await updateStudentGlobalSubscription(studentId, newRemainingSessions, newTotalSessions);
 
-      // Create notification
+      // Create notification with group name
       await supabase
         .from('student_notifications')
         .insert({
           student_id: studentId,
           title: 'Sessions Removed',
-          message: `${sessions} session${sessions !== 1 ? 's' : ''} removed from your global subscription. You now have ${newRemainingSessions} sessions remaining.`,
+          message: `${sessions} session${sessions !== 1 ? 's' : ''} removed from your global subscription in group "${group?.title}". You now have ${newRemainingSessions} sessions remaining.`,
           notification_type: 'session_update',
         });
 
