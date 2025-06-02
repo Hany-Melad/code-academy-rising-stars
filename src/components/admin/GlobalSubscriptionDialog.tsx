@@ -107,6 +107,41 @@ export function GlobalSubscriptionDialog({
     }
   };
 
+  const updateAllStudentSubscriptions = async (studentId: string, totalSessions: number, remainingSessions: number, planDurationMonths: number) => {
+    console.log('Updating all subscriptions for student:', studentId);
+    
+    // Get all student courses for this student
+    const { data: studentCourses } = await supabase
+      .from('student_courses')
+      .select('id')
+      .eq('student_id', studentId);
+
+    if (!studentCourses || studentCourses.length === 0) {
+      throw new Error('No student courses found');
+    }
+
+    // Update all existing subscriptions for this student
+    for (const studentCourse of studentCourses) {
+      const { error } = await supabase
+        .from('student_course_subscription')
+        .upsert({
+          student_course_id: studentCourse.id,
+          plan_duration_months: planDurationMonths,
+          total_sessions: totalSessions,
+          remaining_sessions: remainingSessions,
+          warning: remainingSessions <= 2,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Error updating subscription for course:', studentCourse.id, error);
+        throw error;
+      }
+    }
+
+    console.log('Successfully updated all subscriptions for student');
+  };
+
   const handleStudentSelect = async (student: Student) => {
     console.log('Selected student:', student);
     setSelectedStudent(student);
@@ -120,16 +155,6 @@ export function GlobalSubscriptionDialog({
       setLoading(true);
       console.log('Creating subscription for student:', selectedStudent.id);
 
-      // Check if student already has a subscription
-      if (currentSubscription) {
-        toast({
-          title: "Error",
-          description: "Student already has a subscription. Use the session adjustment options instead.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       const duration = parseInt(planDurationMonths);
       if (isNaN(duration) || duration <= 0) {
         toast({
@@ -140,11 +165,14 @@ export function GlobalSubscriptionDialog({
         return;
       }
 
-      // Get or create student course for any course (we'll use the first available course)
+      const totalSessions = duration * 4;
+      console.log('Creating subscription with:', { duration, totalSessions });
+
+      // Get or create student courses for available courses
       const { data: courses } = await supabase
         .from('courses')
         .select('id')
-        .limit(1);
+        .limit(5); // Get first 5 courses to ensure student has access
 
       if (!courses || courses.length === 0) {
         toast({
@@ -155,62 +183,41 @@ export function GlobalSubscriptionDialog({
         return;
       }
 
-      const courseId = courses[0].id;
-      console.log('Using course ID:', courseId);
+      // Ensure student has at least one course enrollment
+      let studentCourseExists = false;
+      
+      for (const course of courses) {
+        const { data: existingStudentCourse } = await supabase
+          .from('student_courses')
+          .select('id')
+          .eq('student_id', selectedStudent.id)
+          .eq('course_id', course.id)
+          .single();
 
-      // Check if student course exists
-      let { data: studentCourse } = await supabase
-        .from('student_courses')
-        .select('id')
-        .eq('student_id', selectedStudent.id)
-        .eq('course_id', courseId)
-        .single();
+        if (existingStudentCourse) {
+          studentCourseExists = true;
+          break;
+        }
+      }
 
-      console.log('Existing student course:', studentCourse);
-
-      // Create student course if it doesn't exist
-      if (!studentCourse) {
-        console.log('Creating new student course');
-        const { data: newStudentCourse, error: courseError } = await supabase
+      // If no student course exists, create one with the first available course
+      if (!studentCourseExists) {
+        const { error: courseError } = await supabase
           .from('student_courses')
           .insert({
             student_id: selectedStudent.id,
-            course_id: courseId,
+            course_id: courses[0].id,
             progress: 0,
-          })
-          .select('id')
-          .single();
+          });
 
         if (courseError) {
           console.error('Error creating student course:', courseError);
           throw courseError;
         }
-        studentCourse = newStudentCourse;
-        console.log('Created student course:', studentCourse);
       }
 
-      const totalSessions = duration * 4;
-      console.log('Creating subscription with:', { duration, totalSessions });
-
-      // Create subscription
-      const { data: newSubscription, error: subscriptionError } = await supabase
-        .from('student_course_subscription')
-        .insert({
-          student_course_id: studentCourse.id,
-          plan_duration_months: duration,
-          total_sessions: totalSessions,
-          remaining_sessions: totalSessions,
-          warning: false,
-        })
-        .select('*')
-        .single();
-
-      if (subscriptionError) {
-        console.error('Error creating subscription:', subscriptionError);
-        throw subscriptionError;
-      }
-
-      console.log('Created subscription:', newSubscription);
+      // Update all subscriptions for this student across all courses
+      await updateAllStudentSubscriptions(selectedStudent.id, totalSessions, totalSessions, duration);
 
       // Create notification
       await supabase
@@ -270,30 +277,8 @@ export function GlobalSubscriptionDialog({
 
       const newPlanDurationMonths = Math.ceil(newTotalSessions / 4);
 
-      // Get student course
-      const { data: studentCourses } = await supabase
-        .from('student_courses')
-        .select('id')
-        .eq('student_id', selectedStudent.id)
-        .limit(1);
-
-      if (!studentCourses || studentCourses.length === 0) {
-        throw new Error('Student course not found');
-      }
-
-      // Update subscription
-      const { error } = await supabase
-        .from('student_course_subscription')
-        .update({
-          total_sessions: newTotalSessions,
-          remaining_sessions: newRemainingSessions,
-          plan_duration_months: newPlanDurationMonths,
-          warning: newRemainingSessions <= 2,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('student_course_id', studentCourses[0].id);
-
-      if (error) throw error;
+      // Update all subscriptions for this student
+      await updateAllStudentSubscriptions(selectedStudent.id, newTotalSessions, newRemainingSessions, newPlanDurationMonths);
 
       // Create notification
       await supabase
@@ -397,7 +382,7 @@ export function GlobalSubscriptionDialog({
               {currentSubscription ? (
                 <div className="space-y-4">
                   <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Current Subscription</h4>
+                    <h4 className="font-medium mb-2">Current Global Subscription</h4>
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Plan Duration:</span>
@@ -412,6 +397,9 @@ export function GlobalSubscriptionDialog({
                         <p className="font-semibold">{currentSubscription.remaining_sessions}</p>
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      This subscription applies to all groups this student is enrolled in.
+                    </p>
                   </div>
 
                   <div className="space-y-3">
@@ -448,7 +436,7 @@ export function GlobalSubscriptionDialog({
                 <div className="space-y-4">
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <p className="text-sm text-orange-800">
-                      No subscription found for this student. Create a new one below.
+                      No global subscription found for this student. Create a new one below.
                     </p>
                   </div>
 
@@ -463,7 +451,7 @@ export function GlobalSubscriptionDialog({
                     />
                     {planDurationMonths && !isNaN(parseInt(planDurationMonths)) && parseInt(planDurationMonths) > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        This will create {parseInt(planDurationMonths) * 4} sessions ({parseInt(planDurationMonths)} month{parseInt(planDurationMonths) !== 1 ? 's' : ''})
+                        This will create {parseInt(planDurationMonths) * 4} sessions ({parseInt(planDurationMonths)} month{parseInt(planDurationMonths) !== 1 ? 's' : ''}) that will be shared across all groups.
                       </p>
                     )}
                   </div>
@@ -473,7 +461,7 @@ export function GlobalSubscriptionDialog({
                     disabled={loading || !planDurationMonths}
                     className="w-full"
                   >
-                    Create Subscription
+                    {loading ? "Creating..." : "Create Global Subscription"}
                   </Button>
                 </div>
               )}

@@ -45,36 +45,64 @@ export const RefillSessionsDialog = ({
     },
   });
 
+  const updateAllStudentSubscriptions = async (studentId: string, additionalSessions: number) => {
+    console.log('Updating all subscriptions for student:', studentId);
+    
+    // Get all student courses for this student
+    const { data: studentCourses } = await supabase
+      .from('student_courses')
+      .select('id')
+      .eq('student_id', studentId);
+
+    if (!studentCourses || studentCourses.length === 0) {
+      throw new Error('No student courses found');
+    }
+
+    // Get current subscription data from the first student course
+    const { data: currentSubscription } = await supabase
+      .from('student_course_subscription')
+      .select('*')
+      .eq('student_course_id', studentCourses[0].id)
+      .single();
+
+    if (!currentSubscription) {
+      throw new Error('No subscription found');
+    }
+
+    const newRemainingSessions = currentSubscription.remaining_sessions + additionalSessions;
+    const newTotalSessions = currentSubscription.total_sessions + additionalSessions;
+    const newPlanDurationMonths = Math.ceil(newTotalSessions / 4);
+
+    // Update all subscriptions for this student across all courses
+    for (const studentCourse of studentCourses) {
+      const { error } = await supabase
+        .from('student_course_subscription')
+        .upsert({
+          student_course_id: studentCourse.id,
+          plan_duration_months: newPlanDurationMonths,
+          total_sessions: newTotalSessions,
+          remaining_sessions: newRemainingSessions,
+          warning: newRemainingSessions <= 2,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Error updating subscription for course:', studentCourse.id, error);
+        throw error;
+      }
+    }
+
+    return { newRemainingSessions, newTotalSessions };
+  };
+
   const handleRefill = async (data: RefillFormValues) => {
     if (!profile) return;
 
     try {
       setLoading(true);
 
-      // Get current subscription data
-      const { data: subscription, error: fetchError } = await supabase
-        .from('student_course_subscription')
-        .select('remaining_sessions, total_sessions')
-        .eq('id', subscriptionId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Update subscription with additional sessions
-      const newRemainingSessions = subscription.remaining_sessions + data.additionalSessions;
-      const newTotalSessions = subscription.total_sessions + data.additionalSessions;
-
-      const { error: updateError } = await supabase
-        .from('student_course_subscription')
-        .update({
-          remaining_sessions: newRemainingSessions,
-          total_sessions: newTotalSessions,
-          warning: newRemainingSessions <= 2,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscriptionId);
-
-      if (updateError) throw updateError;
+      // Update all subscriptions for this student
+      const { newRemainingSessions } = await updateAllStudentSubscriptions(studentId, data.additionalSessions);
 
       // Create notification for the student
       const { error: notificationError } = await supabase
@@ -82,7 +110,7 @@ export const RefillSessionsDialog = ({
         .insert({
           student_id: studentId,
           title: 'Sessions Added to Your Subscription',
-          message: `Admin refilled your subscription with ${data.additionalSessions} session${data.additionalSessions > 1 ? 's' : ''} on ${new Date().toLocaleDateString()}. You now have ${newRemainingSessions} sessions remaining.`,
+          message: `Admin refilled your global subscription with ${data.additionalSessions} session${data.additionalSessions > 1 ? 's' : ''} on ${new Date().toLocaleDateString()}. You now have ${newRemainingSessions} sessions remaining across all your groups.`,
           notification_type: 'session_refill',
         });
 
@@ -90,7 +118,7 @@ export const RefillSessionsDialog = ({
 
       toast({
         title: "Sessions refilled",
-        description: `Added ${data.additionalSessions} session${data.additionalSessions > 1 ? 's' : ''} to ${studentName}'s subscription`,
+        description: `Added ${data.additionalSessions} session${data.additionalSessions > 1 ? 's' : ''} to ${studentName}'s global subscription`,
       });
 
       form.reset();
@@ -112,7 +140,7 @@ export const RefillSessionsDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Refill Sessions for {studentName}</DialogTitle>
+          <DialogTitle>Refill Global Sessions for {studentName}</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
@@ -133,7 +161,7 @@ export const RefillSessionsDialog = ({
                   </FormControl>
                   <FormMessage />
                   <p className="text-sm text-muted-foreground">
-                    Number of sessions to add to the student's subscription
+                    Sessions will be added to the student's global subscription and apply to all groups they're enrolled in.
                   </p>
                 </FormItem>
               )}
