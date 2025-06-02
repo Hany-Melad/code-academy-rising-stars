@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -85,7 +84,9 @@ export function GlobalSubscriptionDialog({
         .from('student_course_subscription')
         .select('*')
         .eq('student_course_id', studentCourses[0].id)
-        .single();
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       console.log('Subscription query result:', { subscription, error });
 
@@ -122,6 +123,24 @@ export function GlobalSubscriptionDialog({
 
     // Update all existing subscriptions for this student
     for (const studentCourse of studentCourses) {
+      // Clean up any duplicate subscriptions first
+      const { data: existingSubscriptions } = await supabase
+        .from('student_course_subscription')
+        .select('id')
+        .eq('student_course_id', studentCourse.id)
+        .order('updated_at', { ascending: false });
+
+      if (existingSubscriptions && existingSubscriptions.length > 1) {
+        // Keep the latest one, delete the rest
+        const subscriptionsToDelete = existingSubscriptions.slice(1);
+        for (const sub of subscriptionsToDelete) {
+          await supabase
+            .from('student_course_subscription')
+            .delete()
+            .eq('id', sub.id);
+        }
+      }
+
       const { error } = await supabase
         .from('student_course_subscription')
         .upsert({

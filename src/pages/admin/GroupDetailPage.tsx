@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -64,7 +63,9 @@ const GroupDetailPage = () => {
       .from('student_course_subscription')
       .select('*')
       .eq('student_course_id', studentCourses[0].id)
-      .single();
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     console.log('Subscription data:', { subscription, subError });
 
@@ -83,43 +84,54 @@ const GroupDetailPage = () => {
   const updateStudentGlobalSubscription = async (studentId: string, newRemainingSessions: number, newTotalSessions: number) => {
     console.log('Updating global subscription:', { studentId, newRemainingSessions, newTotalSessions });
     
-    // Get any student course for this student
+    // Get all student courses for this student
     const { data: studentCourses } = await supabase
       .from('student_courses')
       .select('id')
-      .eq('student_id', studentId)
-      .limit(1);
+      .eq('student_id', studentId);
 
     if (!studentCourses || studentCourses.length === 0) {
       throw new Error('Student course not found');
     }
 
-    const { data: subscription } = await supabase
-      .from('student_course_subscription')
-      .select('*')
-      .eq('student_course_id', studentCourses[0].id)
-      .single();
-
-    if (!subscription) {
-      throw new Error('No subscription found for this student');
-    }
-
     const newPlanDurationMonths = Math.ceil(newTotalSessions / 4);
 
-    const { error } = await supabase
-      .from('student_course_subscription')
-      .update({
-        total_sessions: newTotalSessions,
-        remaining_sessions: newRemainingSessions,
-        plan_duration_months: newPlanDurationMonths,
-        warning: newRemainingSessions <= 2,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('student_course_id', studentCourses[0].id);
+    // Update all subscriptions for this student across all courses
+    for (const studentCourse of studentCourses) {
+      // Delete any duplicate subscriptions first
+      const { data: existingSubscriptions } = await supabase
+        .from('student_course_subscription')
+        .select('id')
+        .eq('student_course_id', studentCourse.id)
+        .order('updated_at', { ascending: false });
 
-    if (error) {
-      console.error('Error updating subscription:', error);
-      throw error;
+      if (existingSubscriptions && existingSubscriptions.length > 1) {
+        // Keep the latest one, delete the rest
+        const subscriptionsToDelete = existingSubscriptions.slice(1);
+        for (const sub of subscriptionsToDelete) {
+          await supabase
+            .from('student_course_subscription')
+            .delete()
+            .eq('id', sub.id);
+        }
+      }
+
+      // Update or create subscription
+      const { error } = await supabase
+        .from('student_course_subscription')
+        .upsert({
+          student_course_id: studentCourse.id,
+          plan_duration_months: newPlanDurationMonths,
+          total_sessions: newTotalSessions,
+          remaining_sessions: newRemainingSessions,
+          warning: newRemainingSessions <= 2,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Error updating subscription for course:', studentCourse.id, error);
+        throw error;
+      }
     }
 
     console.log('Successfully updated global subscription');

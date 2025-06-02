@@ -73,7 +73,7 @@ const StudentDashboard = () => {
         setCourses(enrolledCourses);
         setStudentCourses(studentCoursesData);
 
-        // Fetch global subscription using the first student course
+        // Fetch global subscription using the first student course (get latest one)
         if (studentCoursesData && studentCoursesData.length > 0) {
           console.log("Fetching subscription for student course:", studentCoursesData[0].id);
           
@@ -81,7 +81,9 @@ const StudentDashboard = () => {
             .from('student_course_subscription')
             .select('*')
             .eq('student_course_id', studentCoursesData[0].id)
-            .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
           console.log("Subscription query result:", { subscriptionData, subscriptionsError });
 
