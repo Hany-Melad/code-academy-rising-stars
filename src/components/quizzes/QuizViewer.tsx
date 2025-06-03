@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,11 +131,22 @@ export function QuizViewer({ sessionId }: QuizViewerProps) {
       const correctAnswers = results.filter(r => r?.is_correct).length;
       const totalPoints = correctAnswers * 2; // Each question is worth 2 points
 
-      // Update student's total points
+      // Get current points first, then add the new points
+      const { data: currentProfile, error: profileFetchError } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('id', profile.id)
+        .single();
+
+      if (profileFetchError) throw profileFetchError;
+
+      const newTotalPoints = (currentProfile.total_points || 0) + totalPoints;
+
+      // Update student's total points by adding new points to existing total
       const { error: pointsError } = await supabase
         .from('profiles')
         .update({
-          total_points: (profile.total_points || 0) + totalPoints
+          total_points: newTotalPoints
         })
         .eq('id', profile.id);
 

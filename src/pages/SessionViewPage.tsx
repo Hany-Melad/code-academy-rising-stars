@@ -163,6 +163,15 @@ const SessionViewPage = () => {
     try {
       const points = 10;
 
+      // Get current profile points first
+      const { data: currentProfile, error: profileFetchError } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('id', profile.id)
+        .single();
+
+      if (profileFetchError) throw profileFetchError;
+
       if (studentSession) {
         const { error } = await supabase
           .from('student_sessions')
@@ -188,10 +197,13 @@ const SessionViewPage = () => {
         if (error) throw error;
       }
 
+      // Add new points to existing total instead of overwriting
+      const newTotalPoints = (currentProfile.total_points || 0) + points;
+
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          total_points: (profile.total_points || 0) + points,
+          total_points: newTotalPoints,
         })
         .eq('id', profile.id);
 
