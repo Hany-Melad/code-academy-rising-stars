@@ -263,7 +263,10 @@ const GroupDetailPage = () => {
           const subscriptionData = await getStudentGlobalSubscription(item.student.id);
           
           return {
-            ...item.student,
+            id: item.student.id,
+            name: item.student.name,
+            unique_id: item.student.unique_id,
+            total_points: item.student.total_points,
             remaining_sessions: subscriptionData.remaining_sessions,
             total_sessions: subscriptionData.total_sessions,
           };
@@ -369,8 +372,8 @@ const GroupDetailPage = () => {
         open={openAddStudentDialog}
         onOpenChange={setOpenAddStudentDialog}
         groupId={groupId!}
-        courseId={group?.course.id || ''}
         onStudentAdded={handleStudentAdded}
+        enrolledStudentIds={students.map(s => s.id)}
       />
     </DashboardLayout>
   );

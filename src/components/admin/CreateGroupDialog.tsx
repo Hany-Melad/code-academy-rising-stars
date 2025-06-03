@@ -81,7 +81,10 @@ export const CreateGroupDialog = ({ open, onOpenChange, onGroupCreated }: Create
 
       const courseList = (data || [])
         .filter(item => item.course)
-        .map(item => item.course as {id: string, title: string});
+        .map(item => ({
+          id: item.course!.id,
+          title: item.course!.title
+        }));
 
       console.log('Processed course list:', courseList);
       setCourses(courseList);
