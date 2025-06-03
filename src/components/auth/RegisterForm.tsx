@@ -112,12 +112,12 @@ export function RegisterForm({ onModeChange }: RegisterFormProps) {
           
           <FormField
             control={form.control}
-            name="age"
+            name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Age</FormLabel>
+                <FormLabel>Phone Number</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Enter your age" {...field} />
+                  <Input placeholder="Enter your phone number" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -127,12 +127,12 @@ export function RegisterForm({ onModeChange }: RegisterFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="phone"
+              name="age"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone (Optional)</FormLabel>
+                  <FormLabel>Age (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your phone number" {...field} />
+                    <Input type="number" placeholder="Enter your age" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

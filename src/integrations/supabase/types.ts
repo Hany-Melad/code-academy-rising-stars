@@ -220,6 +220,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          co_admin_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -227,6 +228,7 @@ export type Database = {
           total_sessions: number
         }
         Insert: {
+          co_admin_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -234,13 +236,66 @@ export type Database = {
           total_sessions?: number
         }
         Update: {
+          co_admin_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           title?: string
           total_sessions?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "courses_co_admin_id_fkey"
+            columns: ["co_admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      low_session_alerts: {
+        Row: {
+          created_at: string | null
+          id: string
+          remaining_sessions: number
+          student_email: string
+          student_id: string
+          student_name: string
+          student_phone: string | null
+          student_unique_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          remaining_sessions: number
+          student_email: string
+          student_id: string
+          student_name: string
+          student_phone?: string | null
+          student_unique_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          remaining_sessions?: number
+          student_email?: string
+          student_id?: string
+          student_name?: string
+          student_phone?: string | null
+          student_unique_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "low_session_alerts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -250,7 +305,7 @@ export type Database = {
           id: string
           location: string | null
           name: string
-          phone: string | null
+          phone: string
           role: string
           total_points: number
           unique_id: string | null
@@ -262,7 +317,7 @@ export type Database = {
           id: string
           location?: string | null
           name: string
-          phone?: string | null
+          phone?: string
           role?: string
           total_points?: number
           unique_id?: string | null
@@ -274,7 +329,7 @@ export type Database = {
           id?: string
           location?: string | null
           name?: string
-          phone?: string | null
+          phone?: string
           role?: string
           total_points?: number
           unique_id?: string | null
@@ -665,6 +720,10 @@ export type Database = {
       can_student_access_session: {
         Args: { session_id: string; student_id: string }
         Returns: boolean
+      }
+      update_low_session_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {

@@ -1,170 +1,149 @@
-import { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Profile } from "@/types/supabase";
+import { Search, User, Mail, Phone } from "lucide-react";
 
 interface AddStudentToGroupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: string;
-  courseId: string;
   onStudentAdded: () => void;
+  enrolledStudentIds: string[];
 }
 
-const formSchema = z.object({
-  student_id: z.string().min(1, {
-    message: "Student ID is required.",
-  }),
-});
-
-type FormData = z.infer<typeof formSchema>;
-
-export function AddStudentToGroupDialog({ 
-  open, 
-  onOpenChange, 
-  groupId, 
-  courseId, 
-  onStudentAdded 
-}: AddStudentToGroupDialogProps) {
+export const AddStudentToGroupDialog = ({
+  open,
+  onOpenChange,
+  groupId,
+  onStudentAdded,
+  enrolledStudentIds,
+}: AddStudentToGroupDialogProps) => {
   const { toast } = useToast();
-  const { profile } = useAuth();
-  const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      student_id: "",
-    },
-  });
+  const searchStudents = async (term: string) => {
+    if (!term.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearching(true);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'student')
+        .or(`unique_id.ilike.%${term}%,name.ilike.%${term}%,email.ilike.%${term}%`)
+        .not('id', 'in', `(${enrolledStudentIds.join(',')})`)
+        .limit(10);
+
+      if (error) throw error;
+
+      setSearchResults(data || []);
+    } catch (error) {
+      console.error('Error searching students:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search students",
+        variant: "destructive",
+      });
+    } finally {
+      setSearching(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .eq('role', 'student');
+    const delayedSearch = setTimeout(() => {
+      searchStudents(searchTerm);
+    }, 300);
 
-        if (error) {
-          console.error("Error fetching students:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load students",
-            variant: "destructive",
-          });
-        } else {
-          setStudents(data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching students:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load students",
-          variant: "destructive",
-        });
-      }
-    };
+    return () => clearTimeout(delayedSearch);
+  }, [searchTerm]);
 
-    fetchStudents();
-  }, []);
+  const handleAddStudent = async () => {
+    if (!selectedStudent) return;
 
-  const onSubmit = async (values: FormData) => {
     try {
       setLoading(true);
 
-      // Get group details for notification
-      const { data: groupData } = await supabase
+      // First, create or get the student_course record for this group's course
+      const { data: groupData, error: groupError } = await supabase
         .from('course_groups')
-        .select('title')
+        .select('course_id')
         .eq('id', groupId)
         .single();
 
-      // Validate if the student is already enrolled in the course
-      const { data: existingCourse, error: existingCourseError } = await supabase
+      if (groupError) throw groupError;
+
+      // Check if student is already enrolled in this course
+      let { data: studentCourse, error: studentCourseError } = await supabase
         .from('student_courses')
-        .select('*')
-        .eq('student_id', values.student_id)
-        .eq('course_id', courseId);
+        .select('id')
+        .eq('student_id', selectedStudent.id)
+        .eq('course_id', groupData.course_id)
+        .maybeSingle();
 
-      if (existingCourseError) throw existingCourseError;
+      if (studentCourseError) throw studentCourseError;
 
-      let studentCourseId;
-
-      if (existingCourse && existingCourse.length > 0) {
-        // Student is already enrolled, use existing student_course_id
-        studentCourseId = existingCourse[0].id;
-      } else {
-        // Student is not enrolled, create a new student_course entry
-        const { data: newStudentCourse, error: newStudentCourseError } = await supabase
+      // If not enrolled, create student_course record
+      if (!studentCourse) {
+        const { data: newStudentCourse, error: createError } = await supabase
           .from('student_courses')
           .insert({
-            student_id: values.student_id,
-            course_id: courseId,
+            student_id: selectedStudent.id,
+            course_id: groupData.course_id,
             progress: 0,
           })
           .select('id')
           .single();
 
-        if (newStudentCourseError) throw newStudentCourseError;
-        studentCourseId = newStudentCourse.id;
+        if (createError) throw createError;
+        studentCourse = newStudentCourse;
       }
 
-      // Add student to group
-      const { error: groupError } = await supabase
+      // Add student to the group
+      const { error: groupStudentError } = await supabase
         .from('course_group_students')
         .insert({
           group_id: groupId,
-          student_id: values.student_id,
-          student_course_id: studentCourseId,
+          student_id: selectedStudent.id,
+          student_course_id: studentCourse.id,
         });
 
-      if (groupError) throw groupError;
-
-      // Create notification with group name
-      await supabase
-        .from('student_notifications')
-        .insert({
-          student_id: values.student_id,
-          title: 'Added to New Group',
-          message: `You have been added to the course group "${groupData?.title || 'Unknown Group'}". Check your dashboard for details.`,
-          notification_type: 'group_added',
-        });
+      if (groupStudentError) throw groupStudentError;
 
       toast({
         title: "Success",
-        description: "Student added to group successfully",
+        description: `${selectedStudent.name} has been added to the group`,
       });
-      form.reset();
+
       onStudentAdded();
       onOpenChange(false);
-    } catch (error: any) {
-      console.error("Error adding student to group:", error);
+      setSelectedStudent(null);
+      setSearchTerm("");
+      setSearchResults([]);
+    } catch (error) {
+      console.error('Error adding student to group:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to add student to group",
+        description: "Failed to add student to group",
         variant: "destructive",
       });
     } finally {
@@ -172,36 +151,108 @@ export function AddStudentToGroupDialog({
     }
   };
 
+  const handleClose = () => {
+    onOpenChange(false);
+    setSelectedStudent(null);
+    setSearchTerm("");
+    setSearchResults([]);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Student to Group</DialogTitle>
-          <DialogDescription>
-            Select a student to add to the group.
-          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="student_id">Student</Label>
-            <Select onValueChange={(value) => form.setValue("student_id", value)} defaultValue={form.getValues("student_id")}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a student" />
-              </SelectTrigger>
-              <SelectContent>
-                {students.map((student) => (
-                  <SelectItem key={student.id} value={student.id}>
-                    {student.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="search">Search Student</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                id="search"
+                placeholder="Search by Student ID, name, or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              {searching && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                </div>
+              )}
+            </div>
           </div>
-          <Button type="submit" disabled={loading}>
+
+          {searchResults.length > 0 && (
+            <div className="max-h-60 overflow-y-auto border rounded-lg">
+              {searchResults.map((student) => (
+                <div
+                  key={student.id}
+                  className={`p-3 border-b last:border-b-0 cursor-pointer hover:bg-gray-50 transition-colors ${
+                    selectedStudent?.id === student.id ? 'bg-blue-50 border-blue-200' : ''
+                  }`}
+                  onClick={() => setSelectedStudent(student)}
+                >
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-gray-400" />
+                    <div className="flex-1">
+                      <p className="font-medium">{student.name}</p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span>ID: {student.unique_id || 'Not assigned'}</span>
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {student.email}
+                        </span>
+                        {student.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {student.phone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedStudent && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Selected Student:</h4>
+              <div className="space-y-1 text-sm">
+                <p><strong>Name:</strong> {selectedStudent.name}</p>
+                <p><strong>ID:</strong> {selectedStudent.unique_id || 'Not assigned'}</p>
+                <p><strong>Email:</strong> {selectedStudent.email}</p>
+                {selectedStudent.phone && (
+                  <p><strong>Phone:</strong> {selectedStudent.phone}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {searchTerm && searchResults.length === 0 && !searching && (
+            <div className="text-center py-4 text-gray-500">
+              No students found matching your search.
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddStudent}
+            disabled={!selectedStudent || loading}
+            className="bg-academy-blue hover:bg-blue-600"
+          >
             {loading ? "Adding..." : "Add Student"}
           </Button>
-        </form>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};

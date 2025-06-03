@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -16,7 +15,7 @@ export interface Database {
           name: string
           email: string
           age: number | null
-          phone: string | null
+          phone: string
           location: string | null
           role: 'student' | 'admin'
           total_points: number
@@ -28,7 +27,7 @@ export interface Database {
           name: string
           email: string
           age?: number | null
-          phone?: string | null
+          phone: string
           location?: string | null
           role?: 'student' | 'admin'
           total_points?: number
@@ -40,7 +39,7 @@ export interface Database {
           name?: string
           email?: string
           age?: number | null
-          phone?: string | null
+          phone?: string
           location?: string | null
           role?: 'student' | 'admin'
           total_points?: number
@@ -54,6 +53,7 @@ export interface Database {
           title: string
           description: string | null
           total_sessions: number
+          co_admin_id: string | null
           created_at: string
         }
         Insert: {
@@ -61,6 +61,7 @@ export interface Database {
           title: string
           description?: string | null
           total_sessions: number
+          co_admin_id?: string | null
           created_at?: string
         }
         Update: {
@@ -68,7 +69,43 @@ export interface Database {
           title?: string
           description?: string | null
           total_sessions?: number
+          co_admin_id?: string | null
           created_at?: string
+        }
+      }
+      low_session_alerts: {
+        Row: {
+          id: string
+          student_id: string
+          student_name: string
+          student_unique_id: string | null
+          student_email: string
+          student_phone: string | null
+          remaining_sessions: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          student_name: string
+          student_unique_id?: string | null
+          student_email: string
+          student_phone?: string | null
+          remaining_sessions: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          student_name?: string
+          student_unique_id?: string | null
+          student_email?: string
+          student_phone?: string | null
+          remaining_sessions?: number
+          created_at?: string
+          updated_at?: string
         }
       }
       sessions: {
@@ -301,3 +338,4 @@ export type Quiz = Database['public']['Tables']['quizzes']['Row']
 export type QuizResult = Database['public']['Tables']['quiz_results']['Row']
 export type Achievement = Database['public']['Tables']['achievements']['Row']
 export type StudentAchievement = Database['public']['Tables']['student_achievements']['Row']
+export type LowSessionAlert = Database['public']['Tables']['low_session_alerts']['Row']
