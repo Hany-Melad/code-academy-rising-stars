@@ -15,6 +15,7 @@ import { z } from "zod";
 const courseFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
+  image_url: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
 });
 
 type CourseFormValues = z.infer<typeof courseFormSchema>;
@@ -34,6 +35,7 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }: Crea
     defaultValues: {
       title: "",
       description: "",
+      image_url: "",
     },
   });
 
@@ -46,6 +48,7 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }: Crea
         .insert({
           title: data.title,
           description: data.description || null,
+          image_url: data.image_url || null,
           total_sessions: 0,
         })
         .select()
@@ -113,6 +116,24 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }: Crea
                       {...field} 
                       placeholder="A brief description of the course content and objectives"
                       rows={4}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="image_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Course Image URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="https://example.com/course-image.jpg"
+                      type="url"
                     />
                   </FormControl>
                   <FormMessage />

@@ -1,107 +1,76 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { useGroupManagement } from "./useGroupManagement";
 
-interface CourseGroup {
+interface GroupData {
   id: string;
   title: string;
   branch: string | null;
   start_date: string;
-  created_at: string;
-  created_by: string;
-  allowed_admin_id: string | null;
   course: {
     id: string;
     title: string;
-    description: string | null;
   };
+  students: Array<{
+    id: string;
+    name: string;
+    unique_id: string;
+    total_points: number;
+  }>;
 }
 
-interface Student {
-  id: string;
-  name: string;
-  unique_id: string | null;
-  total_points: number;
-  remaining_sessions: number;
-  total_sessions: number;
-}
-
-export const useGroupData = () => {
+export const useGroupData = (groupId: string) => {
+  const { profile } = useAuth();
   const { toast } = useToast();
-  const { getStudentGlobalSubscription } = useGroupManagement();
-  const [group, setGroup] = useState<CourseGroup | null>(null);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [group, setGroup] = useState<GroupData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchGroupDetails = async (groupId: string, profileId: string) => {
+  const fetchGroupData = async () => {
+    if (!profile || !groupId) return;
+    
     try {
       setLoading(true);
-      console.log('Fetching group details for:', groupId);
-
+      
       const { data: groupData, error: groupError } = await supabase
         .from('course_groups')
         .select(`
           *,
-          course:courses(id, title, description)
+          course:courses(id, title)
         `)
         .eq('id', groupId)
         .single();
 
-      if (groupError) {
-        console.error('Error fetching group:', groupError);
-        throw groupError;
-      }
-      
-      console.log('Group data:', groupData);
-      setGroup(groupData);
+      if (groupError) throw groupError;
 
       const { data: studentsData, error: studentsError } = await supabase
         .from('course_group_students')
         .select(`
-          student:profiles (
-            id,
-            name,
-            unique_id,
-            total_points
-          )
+          profile:profiles(id, name, unique_id, total_points)
         `)
         .eq('group_id', groupId);
 
-      if (studentsError) {
-        console.error('Error fetching students:', studentsError);
-        throw studentsError;
-      }
+      if (studentsError) throw studentsError;
 
-      console.log('Students data:', studentsData);
+      const students = (studentsData || [])
+        .filter(item => item.profile)
+        .map(item => ({
+          id: item.profile!.id,
+          name: item.profile!.name,
+          unique_id: item.profile!.unique_id,
+          total_points: item.profile!.total_points
+        }));
 
-      const studentsWithSessions = await Promise.all(
-        (studentsData || []).map(async (item) => {
-          if (!item.student) return null;
-          
-          console.log('Processing student:', item.student);
-          const subscriptionData = await getStudentGlobalSubscription(item.student.id);
-          
-          return {
-            id: item.student.id,
-            name: item.student.name,
-            unique_id: item.student.unique_id,
-            total_points: item.student.total_points,
-            remaining_sessions: subscriptionData.remaining_sessions,
-            total_sessions: subscriptionData.total_sessions,
-          };
-        })
-      );
-
-      const validStudents = studentsWithSessions.filter(Boolean) as Student[];
-      console.log('Students with sessions:', validStudents);
-      setStudents(validStudents);
+      setGroup({
+        ...groupData,
+        students
+      });
     } catch (error) {
-      console.error('Error fetching group details:', error);
+      console.error('Error fetching group data:', error);
       toast({
         title: "Error",
-        description: "Failed to load group details",
+        description: "Failed to load group data",
         variant: "destructive",
       });
     } finally {
@@ -109,13 +78,13 @@ export const useGroupData = () => {
     }
   };
 
+  useEffect(() => {
+    fetchGroupData();
+  }, [groupId, profile]);
+
   return {
     group,
-    students,
     loading,
-    fetchGroupDetails,
-    setGroup,
-    setStudents,
-    setLoading,
+    refetch: fetchGroupData,
   };
 };

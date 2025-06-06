@@ -26,6 +26,7 @@ import CourseDetailPage from '@/pages/admin/CourseDetailPage';
 import AdminSessionPage from '@/pages/admin/AdminSessionPage';
 import GroupsPage from '@/pages/admin/GroupsPage';
 import GroupDetailPage from '@/pages/admin/GroupDetailPage';
+import AdminCoursesPage from '@/pages/admin/AdminCoursesPage';
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/courses"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminCoursesPage />
                 </ProtectedRoute>
               }
             />

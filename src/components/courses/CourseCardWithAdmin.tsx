@@ -11,6 +11,15 @@ interface AdminCourseCardProps {
 export const AdminCourseCard = ({ course }: AdminCourseCardProps) => {
   return (
     <Card className="overflow-hidden">
+      {course.image_url && (
+        <div className="aspect-video overflow-hidden">
+          <img 
+            src={course.image_url} 
+            alt={course.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
       <CardHeader className="bg-gradient-to-r from-academy-blue to-academy-orange p-4">
         <CardTitle className="text-white truncate">{course.title}</CardTitle>
         <CardDescription className="text-white/80">

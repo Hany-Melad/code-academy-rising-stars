@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -54,6 +55,7 @@ export interface Database {
           description: string | null
           total_sessions: number
           co_admin_id: string | null
+          image_url: string | null
           created_at: string
         }
         Insert: {
@@ -62,6 +64,7 @@ export interface Database {
           description?: string | null
           total_sessions: number
           co_admin_id?: string | null
+          image_url?: string | null
           created_at?: string
         }
         Update: {
@@ -70,6 +73,7 @@ export interface Database {
           description?: string | null
           total_sessions?: number
           co_admin_id?: string | null
+          image_url?: string | null
           created_at?: string
         }
       }
