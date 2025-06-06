@@ -112,9 +112,7 @@ const Index = () => {
                     alt={course.title}
                     className="w-full h-48 object-cover"
                   />
-                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <Play className="w-12 h-12 text-white" />
-                  </div>
+                 
                   <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
                     {course.duration}
                   </div>
@@ -124,9 +122,14 @@ const Index = () => {
                   <p className="text-gray-600 mb-4">{course.description}</p>
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <span>{course.lessons} lessons</span>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" className="bg-academy-orange hover:bg-orange-600 text-white">
+                      <Link to="/auth" className=" flex items-center gap-2">
                       Watch Now
+                    </Link>
                     </Button>
+                    
+
+
                   </div>
                 </CardContent>
               </Card>
