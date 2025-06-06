@@ -640,6 +640,33 @@ export type Database = {
           },
         ]
       }
+      student_group_points: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          points: number
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          points?: number
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          points?: number
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       student_notifications: {
         Row: {
           created_at: string

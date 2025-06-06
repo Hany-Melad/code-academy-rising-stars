@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { AddStudentToGroupDialog } from "@/components/admin/AddStudentToGroupDialog";
 import { GroupStudentsTab } from "@/components/admin/GroupStudentsTab";
 import { GroupHeader } from "@/components/admin/GroupHeader";
+import { GroupLeaderboard } from "@/components/admin/GroupLeaderboard";
 import { useGroupData } from "@/hooks/useGroupData";
 import { useGroupManagement } from "@/hooks/useGroupManagement";
 
@@ -70,18 +71,29 @@ const GroupDetailPage = () => {
           onAddStudent={() => setOpenAddStudentDialog(true)} 
         />
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Students ({students.length})</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Students ({students.length})</h2>
+              </div>
+              
+              <GroupStudentsTab 
+                students={students}
+                groupId={groupId!}
+                onAddSessions={handleAddSessionsWrapper}
+                onRemoveSessions={handleRemoveSessionsWrapper}
+                onStudentRemoved={handleStudentRemoved}
+              />
+            </div>
           </div>
           
-          <GroupStudentsTab 
-            students={students}
-            groupId={groupId!}
-            onAddSessions={handleAddSessionsWrapper}
-            onRemoveSessions={handleRemoveSessionsWrapper}
-            onStudentRemoved={handleStudentRemoved}
-          />
+          <div className="lg:col-span-1">
+            <GroupLeaderboard 
+              groupId={groupId!}
+              groupTitle={group?.title || 'Group'}
+            />
+          </div>
         </div>
       </div>
 
