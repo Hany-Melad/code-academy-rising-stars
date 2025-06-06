@@ -9,53 +9,74 @@ interface CourseOption {
   title: string;
 }
 
-export const useGroupFormData = () => {
+interface AdminOption {
+  id: string;
+  name: string;
+}
+
+export const useGroupFormData = (isOpen?: boolean) => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<CourseOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [admins, setAdmins] = useState<AdminOption[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCourses = async () => {
+    if (!isOpen) return;
+    
+    const fetchData = async () => {
       if (!profile) return;
       
       try {
-        setLoading(true);
+        setCoursesLoading(true);
         
-        const { data: adminCoursesData, error } = await supabase
+        // Fetch courses
+        const { data: adminCoursesData, error: coursesError } = await supabase
           .from('admin_courses')
           .select(`
             course:courses(id, title)
           `)
           .eq('admin_id', profile.id);
         
-        if (error) throw error;
+        if (coursesError) throw coursesError;
         
         const courseOptions = (adminCoursesData || [])
           .filter(item => item.course)
           .map(item => ({
-            id: item.course!.id,
-            title: item.course!.title
+            id: (item.course as any).id,
+            title: (item.course as any).title
           }));
         
         setCourses(courseOptions);
+
+        // Fetch other admins
+        const { data: adminsData, error: adminsError } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('role', 'admin')
+          .neq('id', profile.id);
+        
+        if (adminsError) throw adminsError;
+        
+        setAdmins(adminsData || []);
       } catch (error) {
-        console.error('Error fetching courses:', error);
+        console.error('Error fetching form data:', error);
         toast({
           title: "Error",
-          description: "Failed to load courses",
+          description: "Failed to load form data",
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        setCoursesLoading(false);
       }
     };
     
-    fetchCourses();
-  }, [profile, toast]);
+    fetchData();
+  }, [profile, toast, isOpen]);
 
   return {
     courses,
-    loading,
+    admins,
+    coursesLoading,
   };
 };

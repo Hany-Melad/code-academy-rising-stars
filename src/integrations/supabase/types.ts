@@ -224,6 +224,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          image_url: string | null
           title: string
           total_sessions: number
         }
@@ -232,6 +233,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           title: string
           total_sessions?: number
         }
@@ -240,6 +242,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           title?: string
           total_sessions?: number
         }

@@ -52,7 +52,7 @@ export const useAdminDashboardData = () => {
         console.log("Admin courses data:", adminCoursesData);
         const adminCourses = (adminCoursesData || [])
           .filter(item => item.course)
-          .map(item => item.course) as Course[];
+          .map(item => item.course) as unknown as Course[];
         
         setCourses(adminCourses);
         
@@ -121,7 +121,7 @@ export const useAdminDashboardData = () => {
       
       const adminCourses = (adminCoursesData || [])
         .filter(item => item.course)
-        .map(item => item.course) as Course[];
+        .map(item => item.course) as unknown as Course[];
       
       setCourses(adminCourses);
     } catch (error) {
