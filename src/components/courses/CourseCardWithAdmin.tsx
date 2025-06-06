@@ -18,12 +18,14 @@ export const AdminCourseCard = ({ course }: AdminCourseCardProps) => {
             alt={course.title}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">
-            <CardTitle className="text-white truncate mb-1">{course.title}</CardTitle>
-            <CardDescription className="text-white/90">
-              {course.total_sessions} {course.total_sessions === 1 ? 'session' : 'sessions'}
-            </CardDescription>
+            <div className="bg-black/30 backdrop-blur-sm rounded-md p-2">
+              <CardTitle className="text-white font-bold text-lg mb-1 drop-shadow-lg">{course.title}</CardTitle>
+              <CardDescription className="text-white font-medium drop-shadow-md">
+                {course.total_sessions} {course.total_sessions === 1 ? 'session' : 'sessions'}
+              </CardDescription>
+            </div>
           </div>
         </div>
       ) : (
