@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Book, Home, Settings, Trophy, User } from "lucide-react";
+import { ArrowRight, Book, Trophy, User, Play } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
@@ -27,6 +27,33 @@ const Index = () => {
     },
   ];
 
+  const sampleCourses = [
+    {
+      id: 1,
+      title: "Introduction to Python",
+      description: "Learn the basics of Python programming",
+      thumbnail: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400",
+      duration: "2 hours",
+      lessons: 12
+    },
+    {
+      id: 2,
+      title: "Web Development Basics",
+      description: "HTML, CSS, and JavaScript fundamentals",
+      thumbnail: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400",
+      duration: "3 hours",
+      lessons: 18
+    },
+    {
+      id: 3,
+      title: "Game Development with Scratch",
+      description: "Create fun games using visual programming",
+      thumbnail: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=400",
+      duration: "1.5 hours",
+      lessons: 8
+    }
+  ];
+
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -39,7 +66,7 @@ const Index = () => {
                 <span className="block">Shape Your Future</span>
               </h1>
               <p className="mt-6 text-xl text-gray-600 max-w-3xl">
-                UPS Junior Coding Academy helps young students develop programming skills through interactive courses, fun projects, and a supportive learning environment.
+                UPS Junior Coding Academy helps young students develop programming skills through interactive video courses, fun projects, and a supportive learning environment.
               </p>
               <div className="mt-10 flex gap-4">
                 <Button asChild size="lg" className="bg-academy-orange hover:bg-orange-600">
@@ -62,6 +89,48 @@ const Index = () => {
                 className="relative rounded-lg shadow-xl object-cover w-full h-[400px]"
               />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Courses Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">Featured Video Courses</h2>
+            <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+              Explore our most popular video courses designed to make learning programming fun and engaging.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {sampleCourses.map((course) => (
+              <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="relative">
+                  <img 
+                    src={course.thumbnail} 
+                    alt={course.title}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <Play className="w-12 h-12 text-white" />
+                  </div>
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
+                    {course.duration}
+                  </div>
+                </div>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-2">{course.title}</h3>
+                  <p className="text-gray-600 mb-4">{course.description}</p>
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <span>{course.lessons} lessons</span>
+                    <Button size="sm" variant="outline">
+                      Watch Now
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>

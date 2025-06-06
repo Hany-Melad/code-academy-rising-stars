@@ -12,10 +12,10 @@ interface LeaderboardCardProps {
 export function LeaderboardCard({ students }: LeaderboardCardProps) {
   const { profile } = useAuth();
   
-  // Get top 10 students
-  const topStudents = students.slice(0, 10);
+  // Get top 5 students
+  const topStudents = students.slice(0, 5);
   
-  // Find current student's rank if not in top 10
+  // Find current student's rank if not in top 5
   const currentStudentRank = students.findIndex(student => student.id === profile?.id) + 1;
   const currentStudent = students.find(student => student.id === profile?.id);
   
@@ -50,7 +50,7 @@ export function LeaderboardCard({ students }: LeaderboardCardProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trophy className="h-5 w-5" />
-          Leaderboard
+          Top Leaderboard
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -85,8 +85,8 @@ export function LeaderboardCard({ students }: LeaderboardCardProps) {
             );
           })}
           
-          {/* Show current student's rank if not in top 10 */}
-          {currentStudentRank > 10 && currentStudent && (
+          {/* Show current student's rank if not in top 5 */}
+          {currentStudentRank > 5 && currentStudent && (
             <>
               <div className="border-t pt-3 mt-3">
                 <p className="text-xs text-muted-foreground mb-2">Your Position:</p>

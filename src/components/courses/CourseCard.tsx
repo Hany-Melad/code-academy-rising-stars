@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,13 +5,13 @@ import { Link } from "react-router-dom";
 import type { Tables } from '@/integrations/supabase/types';
 import { Progress } from "@/components/ui/progress";
 
-
 import { Database } from '@/types/supabase';
 
 type SupabaseStudentCourse = Database['public']['Tables']['student_courses']['Row'];
 
 type StudentCourse = SupabaseStudentCourse & {
-  hide_new_sessions?: boolean; // ✅ extend locally
+  hide_new_sessions?: boolean;
+  remaining_sessions?: number;
 };
 
 type Course = Tables<'courses'>;
@@ -20,14 +19,20 @@ type Course = Tables<'courses'>;
 interface CourseCardProps {
   course: Course;
   studentCourse?: StudentCourse;
+  globalSubscriptionExpired?: boolean;
 }
 
-export function CourseCard({ course, studentCourse }: CourseCardProps) {
+export function CourseCard({ course, studentCourse, globalSubscriptionExpired = false }: CourseCardProps) {
   const progress = studentCourse?.progress || 0;
   const totalSessions = course.total_sessions || 0;
   const progressPercentage = totalSessions > 0 ? Math.round((progress / totalSessions) * 100) : 0;
   const isCompleted = totalSessions > 0 && progress === totalSessions;
-  const isLocked = studentCourse?.hide_new_sessions || false;
+  const isLocked = studentCourse?.hide_new_sessions || globalSubscriptionExpired;
+  
+  // Hide course if global subscription is expired
+  if (globalSubscriptionExpired) {
+    return null;
+  }
   
   return (
     <Card className="overflow-hidden h-full flex flex-col">
@@ -53,7 +58,7 @@ export function CourseCard({ course, studentCourse }: CourseCardProps) {
                 Completed
               </Badge>
             )}
-            {isLocked && (
+            {isLocked && !globalSubscriptionExpired && (
               <Badge className="mt-2 bg-red-100 text-red-800 hover:bg-red-100">
                 Temporarily Locked
               </Badge>

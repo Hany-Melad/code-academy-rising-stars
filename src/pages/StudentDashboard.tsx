@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -108,13 +107,12 @@ const StudentDashboard = () => {
           setSubscriptions([]);
         }
 
-        // Fetch leaderboard data (top students)
+        // Fetch leaderboard data (all students ordered by points to get proper ranking)
         const { data: leaderboardData, error: leaderboardError } = await supabase
           .from('profiles')
           .select('*')
           .eq('role', 'student')
-          .order('total_points', { ascending: false })
-          .limit(10);
+          .order('total_points', { ascending: false });
 
         if (leaderboardError) {
           console.error("Error fetching leaderboard:", leaderboardError);
