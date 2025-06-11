@@ -3,13 +3,14 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ProgressGraph } from "@/components/dashboard/ProgressGraph";
 import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
+import { GroupRankingsCard } from "@/components/dashboard/GroupRankingsCard";
 import { SubscriptionCard } from "@/components/dashboard/SubscriptionCard";
 import { NotificationsCard } from "@/components/dashboard/NotificationsCard";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Course, StudentCourse, Profile } from "@/types/supabase";
 import { Book, Trophy, CheckCircle, Clock } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const StudentDashboard = () => {
   const { profile, user, isLoading: authLoading } = useAuth();
@@ -214,11 +215,16 @@ const StudentDashboard = () => {
             <LeaderboardCard students={students} />
           </div>
           
-          {/* Subscription and Notifications */}
+          {/* Group Rankings and Subscription */}
           <div className="space-y-6">
+            <GroupRankingsCard />
             <SubscriptionCard subscriptions={subscriptions} />
-            <NotificationsCard />
           </div>
+        </div>
+        
+        {/* Notifications */}
+        <div className="mt-6">
+          <NotificationsCard />
         </div>
       </div>
     </DashboardLayout>
