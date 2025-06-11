@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface GroupLeaderboardStudent {
   id: string;
@@ -26,7 +26,7 @@ export const useGroupLeaderboard = (groupId: string) => {
         .select(`
           student_id,
           points,
-          profile:profiles!student_group_points_student_id_fkey(
+          profiles!student_group_points_student_id_fkey(
             id,
             name,
             unique_id
@@ -38,11 +38,11 @@ export const useGroupLeaderboard = (groupId: string) => {
       if (error) throw error;
 
       const leaderboardData = (data || [])
-        .filter(item => item.profile)
+        .filter(item => item.profiles)
         .map((item, index) => ({
-          id: (item.profile as any).id,
-          name: (item.profile as any).name,
-          unique_id: (item.profile as any).unique_id,
+          id: (item.profiles as any).id,
+          name: (item.profiles as any).name,
+          unique_id: (item.profiles as any).unique_id,
           points: item.points,
           rank: index + 1
         }));
