@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import type { Tables } from '@/integrations/supabase/types';
 import { Progress } from "@/components/ui/progress";
+import { Trophy } from "lucide-react";
+import { useCourseGroupRanks } from "@/hooks/useCourseGroupRanks";
 
 import { Database } from '@/types/supabase';
 
@@ -23,11 +25,16 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course, studentCourse, globalSubscriptionExpired = false }: CourseCardProps) {
+  const { courseGroupRanks } = useCourseGroupRanks();
   const progress = studentCourse?.progress || 0;
   const totalSessions = course.total_sessions || 0;
   const progressPercentage = totalSessions > 0 ? Math.round((progress / totalSessions) * 100) : 0;
   const isCompleted = totalSessions > 0 && progress === totalSessions;
   const isLocked = studentCourse?.hide_new_sessions || globalSubscriptionExpired;
+  
+  // Get ranks for this course's groups
+  const courseRanks = courseGroupRanks[course.id] || [];
+  const bestRank = courseRanks.length > 0 ? Math.min(...courseRanks.map(r => r.rank)) : null;
   
   // Hide course if global subscription is expired
   if (globalSubscriptionExpired) {
@@ -36,8 +43,20 @@ export function CourseCard({ course, studentCourse, globalSubscriptionExpired = 
   
   return (
     <Card className="overflow-hidden h-full flex flex-col">
-      <CardHeader className="bg-gradient-to-r from-academy-blue to-academy-orange p-4">
-        <CardTitle className="text-white truncate">{course.title}</CardTitle>
+      <CardHeader className="bg-gradient-to-r from-academy-blue to-academy-orange p-4 relative">
+        {/* Rank Badge in top-right corner */}
+        {bestRank && (
+          <div className="absolute top-2 right-2">
+            <Badge 
+              variant="outline" 
+              className="bg-white/90 text-academy-blue border-white/50 text-xs font-semibold flex items-center gap-1"
+            >
+              <Trophy className="h-3 w-3" />
+              #{bestRank}
+            </Badge>
+          </div>
+        )}
+        <CardTitle className="text-white truncate pr-16">{course.title}</CardTitle>
         <CardDescription className="text-white/80">
           {course.total_sessions} {course.total_sessions === 1 ? 'session' : 'sessions'}
         </CardDescription>

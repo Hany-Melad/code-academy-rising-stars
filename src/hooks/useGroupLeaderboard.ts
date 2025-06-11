@@ -21,29 +21,48 @@ export const useGroupLeaderboard = (groupId: string) => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('student_group_points')
+      // First get all students in the group
+      const { data: groupStudents, error: groupError } = await supabase
+        .from('course_group_students')
         .select(`
           student_id,
-          points,
-          profiles!student_group_points_student_id_fkey(
+          profiles!course_group_students_student_id_fkey(
             id,
             name,
             unique_id
           )
         `)
-        .eq('group_id', groupId)
-        .order('points', { ascending: false });
+        .eq('group_id', groupId);
 
-      if (error) throw error;
+      if (groupError) throw groupError;
 
-      const leaderboardData = (data || [])
+      // Then get their points (if any)
+      const { data: pointsData, error: pointsError } = await supabase
+        .from('student_group_points')
+        .select('student_id, points')
+        .eq('group_id', groupId);
+
+      if (pointsError) throw pointsError;
+
+      // Create a map of student points
+      const pointsMap = (pointsData || []).reduce((acc, item) => {
+        acc[item.student_id] = item.points;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Combine students with their points (default to 0 if no points record)
+      const leaderboardData = (groupStudents || [])
         .filter(item => item.profiles)
-        .map((item, index) => ({
+        .map((item) => ({
           id: (item.profiles as any).id,
           name: (item.profiles as any).name,
           unique_id: (item.profiles as any).unique_id,
-          points: item.points,
+          points: pointsMap[item.student_id] || 0,
+          rank: 0 // Will be calculated after sorting
+        }))
+        .sort((a, b) => b.points - a.points)
+        .map((item, index) => ({
+          ...item,
           rank: index + 1
         }));
 
