@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Minus, UserMinus } from "lucide-react";
+import { Minus, UserMinus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Student {
@@ -106,15 +106,6 @@ export const GroupStudentsTab = ({
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-green-600 hover:text-green-900 hover:bg-green-50"
-                  onClick={() => onAddSessions(student.id, 1)}
-                  disabled={updatingStudentId === student.id}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
