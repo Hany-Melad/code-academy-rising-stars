@@ -104,6 +104,27 @@ export const AddStudentToGroupDialog = ({
 
       // If not enrolled, create student_course record
       if (!studentCourse) {
+        // First, get the student's existing global subscription data from any existing course
+        let existingSessionData = { total_sessions: 0, remaining_sessions: 0 };
+        
+        const { data: existingCourses } = await supabase
+          .from('student_courses')
+          .select(`
+            student_course_subscription(total_sessions, remaining_sessions)
+          `)
+          .eq('student_id', selectedStudent.id)
+          .limit(1);
+
+        if (existingCourses && existingCourses.length > 0) {
+          const existingSubscription = (existingCourses[0] as any)?.student_course_subscription?.[0];
+          if (existingSubscription) {
+            existingSessionData = {
+              total_sessions: existingSubscription.total_sessions,
+              remaining_sessions: existingSubscription.remaining_sessions
+            };
+          }
+        }
+
         const { data: newStudentCourse, error: createError } = await supabase
           .from('student_courses')
           .insert({
@@ -117,14 +138,14 @@ export const AddStudentToGroupDialog = ({
         if (createError) throw createError;
         studentCourse = newStudentCourse;
 
-        // Create default subscription for the new student_course
+        // Create subscription using existing session data
         const { error: subscriptionError } = await supabase
           .from('student_course_subscription')
           .insert({
             student_course_id: studentCourse.id,
-            total_sessions: 0,
-            remaining_sessions: 0,
-            plan_duration_months: 1,
+            total_sessions: existingSessionData.total_sessions,
+            remaining_sessions: existingSessionData.remaining_sessions,
+            plan_duration_months: Math.max(1, Math.ceil(existingSessionData.total_sessions / 4)),
           });
 
         if (subscriptionError) throw subscriptionError;
