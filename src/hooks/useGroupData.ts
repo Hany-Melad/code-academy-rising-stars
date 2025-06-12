@@ -60,7 +60,7 @@ export const useGroupData = () => {
         .from('course_group_students')
         .select(`
           profile:profiles(id, name, unique_id, total_points),
-          student_course:student_courses(
+          student_course:student_courses!inner(
             id,
             subscription:student_course_subscription(remaining_sessions, total_sessions)
           )
