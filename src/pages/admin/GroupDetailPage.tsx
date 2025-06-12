@@ -7,16 +7,30 @@ import { AddStudentToGroupDialog } from "@/components/admin/AddStudentToGroupDia
 import { GroupStudentsTab } from "@/components/admin/GroupStudentsTab";
 import { GroupHeader } from "@/components/admin/GroupHeader";
 import { GroupLeaderboard } from "@/components/admin/GroupLeaderboard";
-import { GlobalSubscriptionDialog } from "@/components/admin/GlobalSubscriptionDialog";
 import { useGroupData } from "@/hooks/useGroupData";
+import { useGroupManagement } from "@/hooks/useGroupManagement";
 
 const GroupDetailPage = () => {
   const { groupId } = useParams();
   const { profile } = useAuth();
   const [openAddStudentDialog, setOpenAddStudentDialog] = useState(false);
-  const [openSubscriptionDialog, setOpenSubscriptionDialog] = useState(false);
   
   const { group, students, loading, fetchGroupDetails } = useGroupData();
+  const { handleAddSessions, handleRemoveSessions } = useGroupManagement();
+
+  const handleAddSessionsWrapper = async (studentId: string, sessions: number) => {
+    const success = await handleAddSessions(studentId, sessions, group?.title);
+    if (success && profile && groupId) {
+      await fetchGroupDetails(groupId, profile.id);
+    }
+  };
+
+  const handleRemoveSessionsWrapper = async (studentId: string, sessions: number) => {
+    const success = await handleRemoveSessions(studentId, sessions, group?.title);
+    if (success && profile && groupId) {
+      await fetchGroupDetails(groupId, profile.id);
+    }
+  };
 
   const handleStudentAdded = () => {
     if (profile && groupId) {
@@ -25,12 +39,6 @@ const GroupDetailPage = () => {
   };
 
   const handleStudentRemoved = () => {
-    if (profile && groupId) {
-      fetchGroupDetails(groupId, profile.id);
-    }
-  };
-
-  const handleSubscriptionUpdated = () => {
     if (profile && groupId) {
       fetchGroupDetails(groupId, profile.id);
     }
@@ -65,12 +73,19 @@ const GroupDetailPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Students ({students.length})</h2>
+              </div>
+              
               <GroupStudentsTab 
                 students={students}
                 groupId={groupId!}
+                onAddSessions={handleAddSessionsWrapper}
+                onRemoveSessions={handleRemoveSessionsWrapper}
                 onStudentRemoved={handleStudentRemoved}
-                onManageSubscriptions={() => setOpenSubscriptionDialog(true)}
               />
+            </div>
           </div>
           
           <div className="lg:col-span-1">
@@ -88,12 +103,6 @@ const GroupDetailPage = () => {
         groupId={groupId!}
         onStudentAdded={handleStudentAdded}
         enrolledStudentIds={students.map(s => s.id)}
-      />
-
-      <GlobalSubscriptionDialog
-        open={openSubscriptionDialog}
-        onOpenChange={setOpenSubscriptionDialog}
-        onSubscriptionUpdated={handleSubscriptionUpdated}
       />
     </DashboardLayout>
   );
