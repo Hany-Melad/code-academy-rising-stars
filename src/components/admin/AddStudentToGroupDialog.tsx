@@ -116,6 +116,18 @@ export const AddStudentToGroupDialog = ({
 
         if (createError) throw createError;
         studentCourse = newStudentCourse;
+
+        // Create default subscription for the new student_course
+        const { error: subscriptionError } = await supabase
+          .from('student_course_subscription')
+          .insert({
+            student_course_id: studentCourse.id,
+            total_sessions: 0,
+            remaining_sessions: 0,
+            plan_duration_months: 1,
+          });
+
+        if (subscriptionError) throw subscriptionError;
       }
 
       // Add student to the group
