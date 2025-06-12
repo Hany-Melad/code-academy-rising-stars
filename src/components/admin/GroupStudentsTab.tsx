@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Minus, UserMinus } from "lucide-react";
+import { UserMinus, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Student {
@@ -18,17 +18,15 @@ interface Student {
 interface GroupStudentsTabProps {
   students: Student[];
   groupId: string;
-  onAddSessions: (studentId: string, sessions: number) => Promise<void>;
-  onRemoveSessions: (studentId: string, sessions: number) => Promise<void>;
   onStudentRemoved?: () => void;
+  onManageSubscriptions?: () => void;
 }
 
 export const GroupStudentsTab = ({ 
   students, 
   groupId,
-  onAddSessions, 
-  onRemoveSessions,
-  onStudentRemoved 
+  onStudentRemoved,
+  onManageSubscriptions 
 }: GroupStudentsTabProps) => {
   const { toast } = useToast();
   const [updatingStudentId, setUpdatingStudentId] = useState<string | null>(null);
@@ -77,8 +75,20 @@ export const GroupStudentsTab = ({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Students ({students.length})</h2>
+        <Button 
+          onClick={onManageSubscriptions}
+          className="flex items-center gap-2"
+        >
+          <Settings className="h-4 w-4" />
+          Manage Subscriptions
+        </Button>
+      </div>
+      
+      <div className="border rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
@@ -109,24 +119,6 @@ export const GroupStudentsTab = ({
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="text-green-600 hover:text-green-900 hover:bg-green-50"
-                  onClick={() => onAddSessions(student.id, 1)}
-                  disabled={updatingStudentId === student.id}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-orange-600 hover:text-orange-900 hover:bg-orange-50"
-                  onClick={() => onRemoveSessions(student.id, 1)}
-                  disabled={updatingStudentId === student.id || student.remaining_sessions === 0}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
                   className="text-red-600 hover:text-red-900 hover:bg-red-50"
                   onClick={() => handleRemoveFromGroup(student.id)}
                   disabled={updatingStudentId === student.id}
@@ -138,6 +130,7 @@ export const GroupStudentsTab = ({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 };

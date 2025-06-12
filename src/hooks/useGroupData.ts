@@ -59,29 +59,48 @@ export const useGroupData = () => {
       const { data: studentsData, error: studentsError } = await supabase
         .from('course_group_students')
         .select(`
-          profile:profiles(id, name, unique_id, total_points),
-          student_course:student_courses!inner(
-            id,
-            subscription:student_course_subscription(remaining_sessions, total_sessions)
-          )
+          profile:profiles(id, name, unique_id, total_points)
         `)
         .eq('group_id', groupId);
 
       if (studentsError) throw studentsError;
 
-      const studentsArray = (studentsData || [])
-        .filter(item => item.profile && item.student_course)
-        .map(item => {
-          const subscription = (item.student_course as any)?.subscription?.[0];
-          return {
-            id: (item.profile as any).id,
-            name: (item.profile as any).name,
-            unique_id: (item.profile as any).unique_id,
-            total_points: (item.profile as any).total_points,
-            remaining_sessions: subscription?.remaining_sessions || 0,
-            total_sessions: subscription?.total_sessions || 0
-          };
+      // Get global subscription data for each student
+      const studentsArray = [];
+      for (const item of studentsData || []) {
+        if (!item.profile) continue;
+        
+        const profile = item.profile as any;
+        
+        // Get the student's global subscription from any of their courses
+        const { data: studentCourses } = await supabase
+          .from('student_courses')
+          .select(`
+            student_course_subscription(remaining_sessions, total_sessions)
+          `)
+          .eq('student_id', profile.id)
+          .limit(1);
+
+        let subscriptionData = { remaining_sessions: 0, total_sessions: 0 };
+        if (studentCourses && studentCourses.length > 0) {
+          const subscription = (studentCourses[0] as any)?.student_course_subscription?.[0];
+          if (subscription) {
+            subscriptionData = {
+              remaining_sessions: subscription.remaining_sessions,
+              total_sessions: subscription.total_sessions
+            };
+          }
+        }
+
+        studentsArray.push({
+          id: profile.id,
+          name: profile.name,
+          unique_id: profile.unique_id,
+          total_points: profile.total_points,
+          remaining_sessions: subscriptionData.remaining_sessions,
+          total_sessions: subscriptionData.total_sessions
         });
+      }
 
       setGroup({
         ...groupData,
