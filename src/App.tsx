@@ -38,7 +38,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/verify-reset" element={<VerifyResetPage />} />
+            <Route path="/auth/verify-reset" element={<VerifyResetPage />} />
             <Route path="/about" element={<About />} />
             <Route path="/courses" element={<CoursesPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />

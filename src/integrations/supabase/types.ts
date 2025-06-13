@@ -54,6 +54,13 @@ export type Database = {
             foreignKeyName: "admin_courses_admin_id_fkey"
             columns: ["admin_id"]
             isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "admin_courses_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -155,6 +162,13 @@ export type Database = {
             foreignKeyName: "course_group_students_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "course_group_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -199,6 +213,13 @@ export type Database = {
             foreignKeyName: "course_groups_allowed_admin_id_fkey"
             columns: ["allowed_admin_id"]
             isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "course_groups_allowed_admin_id_fkey"
+            columns: ["allowed_admin_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -208,6 +229,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "courses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "course_groups_created_by_fkey"
@@ -247,6 +275,13 @@ export type Database = {
           total_sessions?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "courses_co_admin_id_fkey"
+            columns: ["co_admin_id"]
+            isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
           {
             foreignKeyName: "courses_co_admin_id_fkey"
             columns: ["co_admin_id"]
@@ -291,6 +326,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "low_session_alerts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
           {
             foreignKeyName: "low_session_alerts_student_id_fkey"
             columns: ["student_id"]
@@ -371,6 +413,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "quizzes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_results_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "quiz_results_student_id_fkey"
@@ -497,6 +546,13 @@ export type Database = {
             foreignKeyName: "student_achievements_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "student_achievements_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -534,6 +590,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "certificates"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_student_profile"
+            columns: ["student_unique_id"]
+            isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["unique_id"]
           },
           {
             foreignKeyName: "fk_student_profile"
@@ -621,6 +684,13 @@ export type Database = {
             foreignKeyName: "student_courses_assigned_by_fkey"
             columns: ["assigned_by"]
             isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "student_courses_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -630,6 +700,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "courses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_courses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "student_courses_student_id_fkey"
@@ -672,6 +749,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "course_groups"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_group_points_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "student_group_points_student_id_fkey"
@@ -752,6 +836,13 @@ export type Database = {
             foreignKeyName: "student_sessions_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "course_group_students_flat"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "student_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -759,7 +850,34 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      course_group_students_flat: {
+        Row: {
+          course_id: string | null
+          group_id: string | null
+          name: string | null
+          remaining_sessions: number | null
+          student_id: string | null
+          total_points: number | null
+          total_sessions: number | null
+          unique_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_group_students_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "course_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_groups_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_student_access_session: {
